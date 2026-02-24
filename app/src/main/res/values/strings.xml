@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">יהודה - לוח שנה יהודי</string>
+
+    <!-- Navigation -->
+    <string name="nav_calendar">לוח שנה</string>
+    <string name="nav_zmanim">זמנים</string>
+    <string name="nav_mikveh">טהרה</string>
+    <string name="nav_bot">שאל רב</string>
+    <string name="nav_events">אירועים</string>
+
+    <!-- Calendar -->
+    <string name="today">היום</string>
+    <string name="shabbat">שבת</string>
+    <string name="candle_lighting">הדלקת נרות</string>
+    <string name="havdalah">הבדלה</string>
+    <string name="parasha">פרשת השבוע</string>
+    <string name="omer_count">ספירת העומר</string>
+
+    <!-- Zmanim -->
+    <string name="zmanim_title">זמני היום</string>
+    <string name="alot_hashachar">עלות השחר</string>
+    <string name="sunrise">הנץ החמה</string>
+    <string name="sof_zman_kriat_shma_gra">סוף ז"ק שמע (גר"א)</string>
+    <string name="sof_zman_kriat_shma_mga">סוף ז"ק שמע (מג"א)</string>
+    <string name="sof_zman_tfila">סוף זמן תפילה</string>
+    <string name="chatzot">חצות</string>
+    <string name="mincha_gedola">מנחה גדולה</string>
+    <string name="mincha_ketana">מנחה קטנה</string>
+    <string name="plag_hamincha">פלג המנחה</string>
+    <string name="sunset">שקיעת החמה</string>
+    <string name="tzait_hakochavim">צאת הכוכבים</string>
+    <string name="rabenu_tam">רבנו תם</string>
+
+    <!-- Mikveh -->
+    <string name="mikveh_title">ניהול טהרה</string>
+    <string name="mikveh_tracker">מעקב מחזור</string>
+    <string name="seven_clean_days">שבעה נקיים</string>
+    <string name="tevilah_date">יום הטבילה</string>
+    <string name="mikveh_map">מקוואות בסביבה</string>
+    <string name="private_note">הערה פרטית</string>
+    <string name="period_start">תחילת מחזור</string>
+    <string name="period_end">סוף מחזור</string>
+    <string name="add_note">הוסף הערה</string>
+    <string name="daily_check">בדיקה יומית</string>
+    <string name="check_done">הבדיקה בוצעה</string>
+
+    <!-- AI Bot -->
+    <string name="bot_title">שאל שאלה הלכתית</string>
+    <string name="bot_placeholder">שאל שאלתך כאן...</string>
+    <string name="bot_send">שלח</string>
+    <string name="bot_disclaimer">התשובות מסופקות לעיון בלבד ואינן מחליפות שאלת רב</string>
+    <string name="bot_thinking">הבוט חושב...</string>
+    <string name="bot_topics">נושאים נפוצים</string>
+    <string name="ask_rabbi">שאל רב אנושי</string>
+
+    <!-- Events -->
+    <string name="events_title">אירועים</string>
+    <string name="add_event">הוסף אירוע</string>
+    <string name="yahrzeit">יארצייט</string>
+    <string name="bar_mitzvah">בר/בת מצווה</string>
+    <string name="community_event">אירוע קהילתי</string>
+
+    <!-- Permissions -->
+    <string name="location_permission_rationale">נדרש מיקום לחישוב זמנים מדויקים ואיתור מקוואות</string>
+
+    <!-- General -->
+    <string name="hebrew_date">תאריך עברי</string>
+    <string name="gregorian_date">תאריך לועזי</string>
+    <string name="save">שמור</string>
+    <string name="cancel">ביטול</string>
+    <string name="delete">מחק</string>
+    <string name="edit">ערוך</string>
+    <string name="settings">הגדרות</string>
+    <string name="loading">טוען...</string>
+    <string name="error">שגיאה</string>
+    <string name="retry">נסה שוב</string>
+</resources>
