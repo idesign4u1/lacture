@@ -36,7 +36,7 @@ enum class CheckType(val label: String) {
     AFTERNOON("אחה\"צ"),
     REGULAR("רגיל"),
     MOK_DACHUK("מוך דחוק")
-)
+}
 
 @Entity(tableName = "tevilah_records")
 data class TevilahRecord(
