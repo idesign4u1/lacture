@@ -17,7 +17,7 @@ val Cream80 = Color(0xFFF5F0E8)
 val Cream60 = Color(0xFFFFF8E7)
 
 // Shabbat / Holiday colors
-val ShabbatBlue = Color(0xFF1A237E)
+val ShabbatBlue = Color(0xFF64B5F6)   // Blue 300 - visible on both light and dark backgrounds
 val ShabbatGold = Color(0xFFFFD600)
 val HolidayRed = Color(0xFFB71C1C)
 val FastDayGray = Color(0xFF616161)

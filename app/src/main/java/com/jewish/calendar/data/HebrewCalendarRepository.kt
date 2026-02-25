@@ -33,12 +33,26 @@ class HebrewCalendarRepository @Inject constructor() {
 
         val holidayName = when {
             yomTovIndex >= 0 && yomTovIndex != JewishCalendar.ROSH_CHODESH -> getHolidayName(yomTovIndex)
-            isRoshChodesh -> "ראש חודש ${formatter.formatMonth(jewishCalendar)}"
+            isRoshChodesh -> {
+                // Day 30 of the current month = Rosh Chodesh of the *next* month
+                val rcCal = if (jewishCalendar.jewishDayOfMonth == 30) {
+                    JewishCalendar(Calendar.getInstance().apply { time = date; add(Calendar.DAY_OF_MONTH, 1) })
+                } else {
+                    jewishCalendar
+                }
+                "ראש חודש ${formatter.formatMonth(rcCal)}"
+            }
             else -> null
         }
 
+        // Get the parsha for the current week's Shabbat (works for every day of the week)
         val parshaName = try {
-            if (isShabbat) formatter.formatParsha(jewishCalendar).takeIf { it.isNotBlank() } else null
+            val daysToShabbat = (Calendar.SATURDAY - cal.get(Calendar.DAY_OF_WEEK) + 7) % 7
+            val shabbatCal = JewishCalendar(Calendar.getInstance().apply {
+                time = date
+                add(Calendar.DAY_OF_MONTH, daysToShabbat)
+            }).apply { inIsrael = true }
+            formatter.formatParsha(shabbatCal).takeIf { it.isNotBlank() }
         } catch (e: Exception) { null }
 
         val omerCount = try {

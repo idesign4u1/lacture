@@ -1,9 +1,16 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.kapt)
     alias(libs.plugins.hilt)
+}
+
+val localProperties = Properties().also { props ->
+    val f = rootProject.file("local.properties")
+    if (f.exists()) f.inputStream().use { props.load(it) }
 }
 
 android {
@@ -21,12 +28,12 @@ android {
 
         // Hebcal API key (replace with real key)
         buildConfigField("String", "HEBCAL_API_BASE", "\"https://www.hebcal.com/\"")
-        // Claude AI API key - set via local.properties
-        buildConfigField("String", "CLAUDE_API_KEY", "\"${project.findProperty("CLAUDE_API_KEY") ?: ""}\"")
+        // Claude AI API key - read directly from local.properties
+        buildConfigField("String", "CLAUDE_API_KEY", "\"${localProperties.getProperty("CLAUDE_API_KEY", "")}\"")
         buildConfigField("String", "CLAUDE_API_BASE", "\"https://api.anthropic.com/v1/\"")
-        buildConfigField("String", "GOOGLE_MAPS_KEY", "\"${project.findProperty("GOOGLE_MAPS_KEY") ?: ""}\"")
+        buildConfigField("String", "GOOGLE_MAPS_KEY", "\"${localProperties.getProperty("GOOGLE_MAPS_KEY", "")}\"")
 
-        manifestPlaceholders["GOOGLE_MAPS_KEY"] = project.findProperty("GOOGLE_MAPS_KEY") ?: ""
+        manifestPlaceholders["GOOGLE_MAPS_KEY"] = localProperties.getProperty("GOOGLE_MAPS_KEY", "")
     }
 
     buildTypes {
