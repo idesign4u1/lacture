@@ -197,6 +197,9 @@ private fun TodayHebrewHeader(
                     if (today.isRoshChodesh) {
                         HolidayBadge("ראש חודש", OmerGreen)
                     }
+                    today.additionalEvents.firstOrNull { it.startsWith("יארצייט") }?.let {
+                        HolidayBadge(it.removePrefix("יארצייט: "), FastDayGray)
+                    }
                 }
             }
 
@@ -350,14 +353,18 @@ private fun DayCell(
                 color = textColor.copy(alpha = 0.7f),
                 lineHeight = 9.sp
             )
-            if (dayModel.isHoliday || dayModel.isRoshChodesh) {
+            val hasDot = dayModel.isHoliday || dayModel.isRoshChodesh || dayModel.additionalEvents.isNotEmpty()
+            if (hasDot) {
                 Box(
                     modifier = Modifier
                         .size(4.dp)
                         .clip(CircleShape)
                         .background(
-                            if (isSelected) MaterialTheme.colorScheme.onPrimary
-                            else HolidayRed
+                            when {
+                                isSelected -> MaterialTheme.colorScheme.onPrimary
+                                dayModel.isHoliday || dayModel.isRoshChodesh -> HolidayRed
+                                else -> FastDayGray
+                            }
                         )
                 )
             }
@@ -413,6 +420,15 @@ private fun SelectedDayDetails(
         }
         dateModel.omerCount?.let { count ->
             InfoChip(viewModel.getOmerText(count), Icons.Default.Grain, OmerGreen)
+        }
+        // Yahrzeits and special events
+        dateModel.additionalEvents.forEach { event ->
+            val isYahrzeit = event.startsWith("יארצייט")
+            InfoChip(
+                text = event,
+                icon = if (isYahrzeit) Icons.Default.Person else Icons.Default.Star,
+                color = if (isYahrzeit) FastDayGray else Gold60
+            )
         }
 
         // Events section

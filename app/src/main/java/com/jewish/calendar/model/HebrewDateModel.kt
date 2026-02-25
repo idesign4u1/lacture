@@ -17,7 +17,8 @@ data class HebrewDateModel(
     val isHoliday: Boolean,
     val holidayName: String?,
     val parshaName: String?,
-    val omerCount: Int?  // null if not in omer period
+    val omerCount: Int?,          // null if not in omer period
+    val additionalEvents: List<String> = emptyList()  // yahrzeits & special days
 )
 
 enum class HebrewMonth(val hebrewName: String, val value: Int) {

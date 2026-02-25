@@ -60,11 +60,15 @@ class HebrewCalendarRepository @Inject constructor() {
             if (count in 1..49) count else null
         } catch (e: Exception) { null }
 
+        val month = jewishCalendar.jewishMonth
+        val day   = jewishCalendar.jewishDayOfMonth
+        val additionalEvents = ADDITIONAL_EVENTS[Pair(month, day)] ?: emptyList()
+
         return HebrewDateModel(
             gregorianDate = date,
             hebrewDateString = formatter.format(jewishCalendar),
             hebrewMonthName = formatter.formatMonth(jewishCalendar),
-            hebrewDay = jewishCalendar.jewishDayOfMonth,
+            hebrewDay = day,
             hebrewYear = jewishCalendar.jewishYear,
             isShabbat = isShabbat,
             isYomTov = isYomTov,
@@ -73,7 +77,8 @@ class HebrewCalendarRepository @Inject constructor() {
             isHoliday = holidayName != null,
             holidayName = holidayName,
             parshaName = parshaName,
-            omerCount = omerCount
+            omerCount = omerCount,
+            additionalEvents = additionalEvents
         )
     }
 
@@ -112,6 +117,121 @@ class HebrewCalendarRepository @Inject constructor() {
         }
         sb.append(" לעומר")
         return sb.toString()
+    }
+
+    companion object {
+        // Key: Pair(hebrewMonth, hebrewDay)  — month 1=Nissan … 7=Tishrei … 12=Adar / 13=Adar II
+        val ADDITIONAL_EVENTS: Map<Pair<Int,Int>, List<String>> = mapOf(
+            // ── תשרי (7) ──
+            Pair(7, 9)  to listOf("יארצייט: הגרי\"ז סולובייצ'יק"),
+            Pair(7, 10) to listOf("יארצייט: רבי עקיבא"),
+            Pair(7, 13) to listOf("יארצייט: רבי עקיבא איגר"),
+            Pair(7, 14) to listOf("יארצייט: המגיד מקוז'ניץ"),
+            Pair(7, 18) to listOf("יארצייט: רבי נחמן מברסלב"),
+            Pair(7, 19) to listOf("יארצייט: הגאון מוילנא (הגר\"א)"),
+            Pair(7, 24) to listOf("יארצייט: רבי יעקב יוסף מפולנאה"),
+            Pair(7, 25) to listOf("יארצייט: החתם סופר", "יארצייט: רבי לוי יצחק מברדיטשוב"),
+            Pair(7, 29) to listOf("יארצייט: שמעון הצדיק"),
+            // ── חשון (8) ──
+            Pair(8, 3)  to listOf("יארצייט: הרב עובדיה יוסף"),
+            Pair(8, 5)  to listOf("יארצייט: רבי צבי אלימלך מדינוב (בני יששכר)"),
+            Pair(8, 7)  to listOf("התחלת שאילת גשמים (ברך עלינו)"),
+            Pair(8, 11) to listOf("יארצייט: רחל אמנו", "יארצייט: רבי מנחם נחום מטשרנוביל"),
+            Pair(8, 15) to listOf("יארצייט: החזון איש"),
+            Pair(8, 16) to listOf("יארצייט: הרב שך"),
+            // ── כסלו (9) ──
+            Pair(9, 9)  to listOf("יארצייט: האדמו\"ר האמצעי מחב\"ד (רבי דוב בער שניאורי)"),
+            Pair(9, 18) to listOf("יארצייט: רבי ברוך ממז'יבוז' (נכד הבעש\"ט)"),
+            Pair(9, 19) to listOf("חג הגאולה (י\"ט כסלו) - שחרור אדמו\"ר הזקן", "יארצייט: המגיד ממעזריטש"),
+            Pair(9, 20) to listOf("יארצייט: רבי שלום רוקח מבעלזא"),
+            Pair(9, 21) to listOf("יארצייט: רבי אברהם יהושע השל מאפטא (האוהב ישראל)"),
+            Pair(9, 24) to listOf("יארצייט: הרב שטיינמן"),
+            // ── טבת (10) ──
+            Pair(10, 3)  to listOf("יארצייט: ר' חיים שמואלביץ"),
+            Pair(10, 5)  to listOf("יארצייט: הרש\"ב מלובאוויטש"),
+            Pair(10, 10) to listOf("יארצייט: ר' נתן מברסלב"),
+            Pair(10, 16) to listOf("יארצייט: רבי ישראל פרידמן מסדיגורא"),
+            Pair(10, 20) to listOf("יארצייט: הרמב\"ם"),
+            Pair(10, 24) to listOf("יארצייט: בעל התניא (אדמו\"ר הזקן)"),
+            Pair(10, 29) to listOf("יארצייט: הרב יצחק כדורי"),
+            // ── שבט (11) ──
+            Pair(11, 2)  to listOf("יארצייט: רבי זושא מאניפולי"),
+            Pair(11, 4)  to listOf("יארצייט: הבבא סאלי (רבי ישראל אבוחצירא)"),
+            Pair(11, 5)  to listOf("יארצייט: השפת אמת מגור"),
+            Pair(11, 10) to listOf("יארצייט: הריי\"צ מליובאוויטש"),
+            Pair(11, 22) to listOf("יארצייט: הרבי מקוצק"),
+            Pair(11, 25) to listOf("יארצייט: ר' ישראל סלנטר"),
+            // ── אדר (12) — גם בשנים רגילות ──
+            Pair(12, 1)  to listOf("יארצייט: הש\"ך", "משנכנס אדר מרבין בשמחה"),
+            Pair(12, 2)  to listOf("יארצייט: רבי מאיר מפרמישלאן"),
+            Pair(12, 7)  to listOf("יארצייט: משה רבינו (יום פטירתו ולידתו)", "יארצייט: אדמו\"ר הזקן (לפי חלק מהדעות)"),
+            Pair(12, 9)  to listOf("יארצייט: רבי משה ליב מסאסוב"),
+            Pair(12, 11) to listOf("יארצייט: החיד\"א"),
+            Pair(12, 13) to listOf("יארצייט: ר' משה פיינשטיין"),
+            Pair(12, 14) to listOf("יארצייט: הרב צבי יהודה קוק", "יארצייט: רבי זאב וולף מז'יטומיר"),
+            Pair(12, 15) to listOf("יארצייט: הרב קנייבסקי"),
+            Pair(12, 17) to listOf("יארצייט: רבי שמעלקא מניקלשבורג", "יארצייט: רבי אברהם מקאליסק"),
+            Pair(12, 18) to listOf("יארצייט: רבי אלכסנדר זושא מקומרנא"),
+            Pair(12, 20) to listOf("יארצייט: הרב שלמה זלמן אוירבך"),
+            Pair(12, 21) to listOf("יארצייט: ר' אלימלך מליז'ענסק", "יארצייט: רבי קלונימוס קלמן מקראקא"),
+            Pair(12, 23) to listOf("יארצייט: רבי זדוק הכהן מלובלין"),
+            Pair(12, 25) to listOf("יארצייט: רבי יצחק מוורקא"),
+            // ── אדר ב (13) — שנים מעוברות ──
+            Pair(13, 1)  to listOf("יארצייט: הש\"ך", "משנכנס אדר מרבין בשמחה"),
+            Pair(13, 2)  to listOf("יארצייט: רבי מאיר מפרמישלאן"),
+            Pair(13, 7)  to listOf("יארצייט: משה רבינו (יום פטירתו ולידתו)"),
+            Pair(13, 9)  to listOf("יארצייט: רבי משה ליב מסאסוב"),
+            Pair(13, 11) to listOf("יארצייט: החיד\"א"),
+            Pair(13, 13) to listOf("יארצייט: ר' משה פיינשטיין"),
+            Pair(13, 14) to listOf("יארצייט: הרב צבי יהודה קוק"),
+            Pair(13, 15) to listOf("יארצייט: הרב קנייבסקי"),
+            Pair(13, 18) to listOf("יארצייט: רבי אלכסנדר זושא מקומרנא"),
+            Pair(13, 20) to listOf("יארצייט: הרב שלמה זלמן אוירבך"),
+            Pair(13, 21) to listOf("יארצייט: ר' אלימלך מליז'ענסק", "יארצייט: רבי קלונימוס קלמן מקראקא"),
+            Pair(13, 23) to listOf("יארצייט: רבי זדוק הכהן מלובלין"),
+            Pair(13, 25) to listOf("יארצייט: רבי יצחק מוורקא"),
+            // ── ניסן (1) ──
+            Pair(1, 4)  to listOf("יארצייט: רבי אהרן מקרלין"),
+            Pair(1, 7)  to listOf("יארצייט: האר\"י הקדוש (יום הולדת)"),
+            Pair(1, 11) to listOf("יארצייט: הרמב\"ן / השל\"ה הקדוש"),
+            Pair(1, 13) to listOf("יארצייט: הצמח צדק מחב\"ד"),
+            Pair(1, 15) to listOf("יארצייט: יצחק אבינו"),
+            Pair(1, 25) to listOf("יארצייט: הרב חיים מצאנז (בעל דברי חיים)"),
+            Pair(1, 26) to listOf("יארצייט: יהושע בן נון"),
+            Pair(1, 27) to listOf("יארצייט: רבי חיים מאיר יחיאל שפירא מדרוהוביטש"),
+            // ── אייר (2) ──
+            Pair(2, 1)  to listOf("יארצייט: רבי מנחם מנדל מויטבסק (פרי הארץ)"),
+            Pair(2, 3)  to listOf("יארצייט: רבי ישעיה'לה מקרסטיר"),
+            Pair(2, 11) to listOf("יארצייט: רבי נפתלי צבי מרופשיץ", "יארצייט: רבי מרדכי מנסכיז"),
+            Pair(2, 20) to listOf("יארצייט: רבי מרדכי מטשרנוביל"),
+            Pair(2, 23) to listOf("יארצייט: רבי גרשון מקיטוב (גיסו של הבעש\"ט)"),
+            // ── סיון (3) ──
+            Pair(3, 3)  to listOf("יארצייט: רבי ישראל מוויזניץ"),
+            Pair(3, 6)  to listOf("יארצייט: דוד המלך", "יארצייט: הבעש\"ט"),
+            Pair(3, 14) to listOf("יארצייט: ר' חיים מוולוז'ין (מייסד ישיבת וולוז'ין)"),
+            Pair(3, 25) to listOf("יארצייט: רבן שמעון בן גמליאל"),
+            // ── תמוז (4) ──
+            Pair(4, 1)  to listOf("יארצייט: יוסף הצדיק"),
+            Pair(4, 3)  to listOf("יארצייט: הרבי מליובאוויטש (האדמו\"ר השביעי)"),
+            Pair(4, 4)  to listOf("יארצייט: רבי פנחס הלוי הורוביץ (בעל ההפלאה)"),
+            Pair(4, 12) to listOf("יארצייט: רבי אברהם דב מאבריטש (בעל בת עין)"),
+            Pair(4, 27) to listOf("יארצייט: רבי שלמה מקרלין"),
+            Pair(4, 29) to listOf("יארצייט: רש\"י (פרשן התורה והתלמוד)"),
+            // ── אב (5) ──
+            Pair(5, 1)  to listOf("יארצייט: אהרן הכהן"),
+            Pair(5, 5)  to listOf("יארצייט: האר\"י הקדוש"),
+            Pair(5, 9)  to listOf("יארצייט: רבי ישראל מרוז'ין"),
+            Pair(5, 15) to listOf("יארצייט: רבי שמחה בונים מפשיסחא", "יארצייט: רבי צבי הירש מזידיטשוב"),
+            Pair(5, 21) to listOf("יארצייט: ר' חיים מבריסק"),
+            Pair(5, 28) to listOf("יארצייט: הנצי\"ב מוולוז'ין"),
+            // ── אלול (6) ──
+            Pair(6, 3)  to listOf("יארצייט: הרב קוק (הרב הראשי הראשון לא\"י)"),
+            Pair(6, 5)  to listOf("יארצייט: רבי ישראל מסטולין (הינוקא)"),
+            Pair(6, 10) to listOf("יארצייט: רבי פנחס מקוריץ"),
+            Pair(6, 18) to listOf("יארצייט: המהר\"ל מפראג", "יום הולדת: הבעש\"ט"),
+            Pair(6, 24) to listOf("יארצייט: החפץ חיים"),
+            Pair(6, 25) to listOf("יום בריאת העולם (כ\"ה אלול)", "יארצייט: רבי יחיאל מיכל מזלוטשוב"),
+        )
     }
 
     private fun getHolidayName(index: Int): String? = when (index) {
