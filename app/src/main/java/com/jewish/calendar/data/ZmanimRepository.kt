@@ -47,7 +47,7 @@ class ZmanimRepository @Inject constructor() {
             date = date,
             cityName = cityName,
             alotHashachar = zcal.alosHashachar,
-            misheyakir = zcal.misheyakir,
+            misheyakir = zcal.misheyakir10Point2Degrees,
             sunrise = zcal.sunrise,
             sofZmanKriatShmaMGA = zcal.sofZmanShmaMGA,
             sofZmanKriatShmaGRA = zcal.sofZmanShmaGRA,
