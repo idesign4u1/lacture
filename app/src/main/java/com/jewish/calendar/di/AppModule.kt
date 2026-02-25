@@ -21,7 +21,9 @@ object AppModule {
             context,
             AppDatabase::class.java,
             "yehuda_calendar_db"
-        ).build()
+        )
+            .addMigrations(MIGRATION_1_2)
+            .build()
     }
 
     @Provides
@@ -35,6 +37,10 @@ object AppModule {
     @Provides
     @Singleton
     fun provideTevilahDao(db: AppDatabase): TevilahDao = db.tevilahDao()
+
+    @Provides
+    @Singleton
+    fun provideCalendarEventDao(db: AppDatabase): CalendarEventDao = db.calendarEventDao()
 
     @Provides
     @Singleton

@@ -1,5 +1,7 @@
 package com.jewish.calendar.ui.screens.mikveh
 
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -14,13 +16,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.jewish.calendar.model.CycleStatus
-import com.jewish.calendar.model.MikvehLocation
+import com.jewish.calendar.model.TevilahRecord
 import com.jewish.calendar.ui.theme.*
 import com.jewish.calendar.viewmodel.MikvehViewModel
 import java.text.SimpleDateFormat
@@ -35,7 +38,6 @@ fun MikvehScreen(
     var selectedTab by remember { mutableIntStateOf(0) }
     val tabs = listOf("מצב נוכחי", "מקוואות", "היסטוריה")
 
-    // Show snackbar for success messages
     val snackbarHostState = remember { SnackbarHostState() }
     LaunchedEffect(uiState.successMessage) {
         uiState.successMessage?.let {
@@ -77,7 +79,6 @@ fun MikvehScreen(
                 .padding(padding)
                 .background(MaterialTheme.colorScheme.background)
         ) {
-            // Tab Row
             TabRow(
                 selectedTabIndex = selectedTab,
                 containerColor = MaterialTheme.colorScheme.surface
@@ -102,7 +103,7 @@ fun MikvehScreen(
                     isLoading = uiState.isLoading,
                     viewModel = viewModel
                 )
-                1 -> MikvehMapTab(mikvaot = uiState.nearbyMikvahot)
+                1 -> MikvehMapTab()
                 2 -> TevilahHistoryTab(viewModel = viewModel)
             }
         }
@@ -124,6 +125,13 @@ fun MikvehScreen(
                 viewModel.addDailyCheck(day, isClean, note)
             },
             onDismiss = { viewModel.hideDailyCheckDialog() }
+        )
+    }
+
+    if (uiState.showDeleteCycleDialog) {
+        DeleteCycleDialog(
+            onConfirm = { viewModel.deleteCycle() },
+            onDismiss = { viewModel.hideDeleteCycleDialog() }
         )
     }
 }
@@ -151,12 +159,10 @@ private fun CycleStatusTab(
                 NoCycleCard(onStart = { viewModel.showAddCycleDialog() })
             }
         } else {
-            // Current status card
             item {
-                CurrentStatusCard(status)
+                CurrentStatusCard(status, onDelete = { viewModel.showDeleteCycleDialog() })
             }
 
-            // Seven clean days tracker
             if (status.isInSevenCleanDays) {
                 item {
                     SevenCleanDaysTracker(
@@ -167,21 +173,14 @@ private fun CycleStatusTab(
                 }
             }
 
-            // Tevilah countdown
             status.projectedTevilahDate?.let { tevilahDate ->
-                item {
-                    TevilahCountdownCard(tevilahDate)
-                }
+                item { TevilahCountdownCard(tevilahDate) }
             }
 
-            // Next Veset
             status.nextVesetDate?.let { vesetDate ->
-                item {
-                    NextVesetCard(vesetDate)
-                }
+                item { NextVesetCard(vesetDate) }
             }
 
-            // Action buttons
             item {
                 ActionButtonsRow(
                     status = status,
@@ -234,7 +233,7 @@ private fun NoCycleCard(onStart: () -> Unit) {
 }
 
 @Composable
-private fun CurrentStatusCard(status: CycleStatus) {
+private fun CurrentStatusCard(status: CycleStatus, onDelete: () -> Unit) {
     val dateFormatter = SimpleDateFormat("d/M/yyyy", Locale.getDefault())
 
     Card(
@@ -253,6 +252,16 @@ private fun CurrentStatusCard(status: CycleStatus) {
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                // Delete button
+                IconButton(onClick = onDelete, modifier = Modifier.size(36.dp)) {
+                    Icon(
+                        Icons.Default.Delete,
+                        contentDescription = "מחק מחזור",
+                        tint = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+
                 val statusText = when {
                     status.isInSevenCleanDays -> "שבעה נקיים - יום ${status.cleanDayNumber}"
                     status.isInPeriod -> "ימי נידה - יום ${status.dayOfPeriod}"
@@ -282,7 +291,6 @@ private fun CurrentStatusCard(status: CycleStatus) {
 
                 Spacer(Modifier.width(12.dp))
 
-                // Status icon
                 Box(
                     modifier = Modifier
                         .size(56.dp)
@@ -510,119 +518,63 @@ private fun ActionButtonsRow(
     }
 }
 
+// --- Mikveh Map Tab (replaced with Google Maps link) ---
+
 @Composable
-private fun MikvehMapTab(mikvaot: List<MikvehLocation>) {
-    LazyColumn(
-        contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+private fun MikvehMapTab() {
+    val context = LocalContext.current
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(24.dp),
+        contentAlignment = Alignment.Center
     ) {
-        item {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Text("💧", fontSize = 56.sp)
             Text(
-                text = "מקוואות בסביבה",
-                style = MaterialTheme.typography.titleLarge,
+                text = "חיפוש מקוואות בסביבה",
+                style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(bottom = 4.dp)
+                textAlign = TextAlign.Center
             )
-        }
-        items(mikvaot) { mikveh ->
-            MikvehCard(mikveh)
-        }
-    }
-}
-
-@Composable
-private fun MikvehCard(mikveh: MikvehLocation) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.Top
+            Text(
+                text = "לחצי כדי לחפש מקוואות קרובות דרך Google Maps",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center
+            )
+            Spacer(Modifier.height(8.dp))
+            Button(
+                onClick = {
+                    val mapsUri = Uri.parse("geo:0,0?q=מקווה")
+                    val intent = Intent(Intent.ACTION_VIEW, mapsUri)
+                    intent.setPackage("com.google.android.apps.maps")
+                    if (intent.resolveActivity(context.packageManager) != null) {
+                        context.startActivity(intent)
+                    } else {
+                        // Fallback to browser
+                        val webIntent = Intent(
+                            Intent.ACTION_VIEW,
+                            Uri.parse("https://maps.google.com/?q=מקווה")
+                        )
+                        context.startActivity(webIntent)
+                    }
+                },
+                colors = ButtonDefaults.buttonColors(containerColor = PurityPurple)
             ) {
-                Column(modifier = Modifier.weight(1f), horizontalAlignment = Alignment.End) {
-                    Text(
-                        text = mikveh.name,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        textAlign = TextAlign.End
-                    )
-                    Text(
-                        text = mikveh.address,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        textAlign = TextAlign.End
-                    )
-                }
+                Icon(Icons.Default.Place, contentDescription = null, tint = Color.White)
                 Spacer(Modifier.width(8.dp))
-                Icon(
-                    Icons.Default.Place,
-                    contentDescription = null,
-                    tint = PurityPurple,
-                    modifier = Modifier.size(24.dp)
-                )
-            }
-
-            Spacer(Modifier.height(8.dp))
-
-            // Opening hours
-            mikveh.openingHours?.let { hours ->
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End
-                ) {
-                    Text(
-                        text = hours,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        textAlign = TextAlign.End
-                    )
-                    Spacer(Modifier.width(4.dp))
-                    Icon(
-                        Icons.Default.Schedule,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(14.dp)
-                    )
-                }
-            }
-
-            Spacer(Modifier.height(8.dp))
-
-            // Chips
-            Row(
-                horizontalArrangement = Arrangement.End,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                if (mikveh.isAccessible) {
-                    SuggestionChip(
-                        onClick = {},
-                        label = { Text("♿ נגיש", fontSize = 11.sp) },
-                        modifier = Modifier.padding(horizontal = 2.dp)
-                    )
-                }
-                if (mikveh.hasAppointment) {
-                    SuggestionChip(
-                        onClick = {},
-                        label = { Text("📅 תורים", fontSize = 11.sp) },
-                        modifier = Modifier.padding(horizontal = 2.dp)
-                    )
-                }
-                mikveh.phone?.let { phone ->
-                    SuggestionChip(
-                        onClick = {},
-                        label = { Text("📞 $phone", fontSize = 11.sp) },
-                        modifier = Modifier.padding(horizontal = 2.dp)
-                    )
-                }
+                Text("פתח Google Maps", color = Color.White)
             }
         }
     }
 }
+
+// --- Tevilah History Tab ---
 
 @Composable
 private fun TevilahHistoryTab(viewModel: MikvehViewModel) {
@@ -649,34 +601,79 @@ private fun TevilahHistoryTab(viewModel: MikvehViewModel) {
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             items(uiState.tevilahHistory) { record ->
-                Card(modifier = Modifier.fillMaxWidth()) {
-                    Row(
-                        modifier = Modifier.padding(16.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column {
-                            if (record.mikvehName.isNotEmpty()) {
-                                Text(
-                                    text = record.mikvehName,
-                                    style = MaterialTheme.typography.bodyMedium
-                                )
-                            }
-                        }
-                        Text(
-                            text = dateFormatter.format(Date(record.date)),
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = PurityPurple
-                        )
-                    }
-                }
+                TevilahHistoryItem(
+                    record = record,
+                    dateFormatter = dateFormatter,
+                    onDelete = { viewModel.deleteTevilah(record) }
+                )
             }
         }
     }
 }
 
-// Dialogs
+@Composable
+private fun TevilahHistoryItem(
+    record: TevilahRecord,
+    dateFormatter: SimpleDateFormat,
+    onDelete: () -> Unit
+) {
+    var showConfirm by remember { mutableStateOf(false) }
+
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(onClick = { showConfirm = true }, modifier = Modifier.size(36.dp)) {
+                Icon(
+                    Icons.Default.Delete,
+                    contentDescription = "מחק",
+                    tint = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+            Column(horizontalAlignment = Alignment.End, modifier = Modifier.weight(1f)) {
+                Text(
+                    text = dateFormatter.format(Date(record.date)),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = PurityPurple,
+                    textAlign = TextAlign.End
+                )
+                if (record.mikvehName.isNotEmpty()) {
+                    Text(
+                        text = record.mikvehName,
+                        style = MaterialTheme.typography.bodyMedium,
+                        textAlign = TextAlign.End
+                    )
+                }
+            }
+            Spacer(Modifier.width(8.dp))
+            Text("💧", fontSize = 20.sp)
+        }
+    }
+
+    if (showConfirm) {
+        AlertDialog(
+            onDismissRequest = { showConfirm = false },
+            title = { Text("מחיקת רשומה") },
+            text = { Text("למחוק את רשומת הטבילה מתאריך ${dateFormatter.format(Date(record.date))}?") },
+            confirmButton = {
+                Button(
+                    onClick = { showConfirm = false; onDelete() },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) { Text("מחק") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showConfirm = false }) { Text("ביטול") }
+            }
+        )
+    }
+}
+
+// --- Dialogs ---
+
 @Composable
 private fun StartCycleDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
     AlertDialog(
@@ -695,6 +692,34 @@ private fun StartCycleDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
                 colors = ButtonDefaults.buttonColors(containerColor = PurityPurple)
             ) {
                 Text("כן, התחל")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("ביטול") }
+        }
+    )
+}
+
+@Composable
+private fun DeleteCycleDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text("מחיקת מחזור", textAlign = TextAlign.End, modifier = Modifier.fillMaxWidth())
+        },
+        text = {
+            Text(
+                "האם למחוק את המחזור הנוכחי? פעולה זו לא ניתנת לביטול.",
+                textAlign = TextAlign.End,
+                modifier = Modifier.fillMaxWidth()
+            )
+        },
+        confirmButton = {
+            Button(
+                onClick = onConfirm,
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+            ) {
+                Text("מחק")
             }
         },
         dismissButton = {
@@ -741,6 +766,10 @@ private fun DailyCheckDialog(
         },
         dismissButton = {
             Row {
+                TextButton(onClick = { onConfirm(false, note) }) {
+                    Text("לא נקייה", color = MaterialTheme.colorScheme.error)
+                }
+                Spacer(Modifier.width(4.dp))
                 TextButton(onClick = onDismiss) { Text("ביטול") }
             }
         }

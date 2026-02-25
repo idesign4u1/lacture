@@ -18,7 +18,7 @@ class HebrewCalendarRepository @Inject constructor() {
 
     fun getHebrewDateForDay(date: Date): HebrewDateModel {
         val cal = Calendar.getInstance().apply { time = date }
-        val jewishCalendar = JewishCalendar(cal)
+        val jewishCalendar = JewishCalendar(cal).apply { inIsrael = true }
 
         val isShabbat = jewishCalendar.dayOfWeek == Calendar.SATURDAY
         val yomTovIndex = jewishCalendar.yomTovIndex

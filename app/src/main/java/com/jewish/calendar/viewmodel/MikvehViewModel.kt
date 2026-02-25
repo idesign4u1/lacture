@@ -19,6 +19,7 @@ data class MikvehUiState(
     val isLoading: Boolean = true,
     val showAddCycleDialog: Boolean = false,
     val showDailyCheckDialog: Boolean = false,
+    val showDeleteCycleDialog: Boolean = false,
     val successMessage: String? = null
 )
 
@@ -39,13 +40,10 @@ class MikvehViewModel @Inject constructor(
             _uiState.update { it.copy(isLoading = true) }
             val cycleStatus = mikvehRepository.getCycleStatus()
             val history = mikvehRepository.getTevilahHistory()
-            // Default to Jerusalem coordinates
-            val mikvaot = mikvehRepository.getNearbyMikvaot(31.7683, 35.2137)
             _uiState.update {
                 it.copy(
                     cycleStatus = cycleStatus,
                     tevilahHistory = history,
-                    nearbyMikvahot = mikvaot,
                     isLoading = false
                 )
             }
@@ -73,6 +71,17 @@ class MikvehViewModel @Inject constructor(
         }
     }
 
+    fun deleteCycle() {
+        viewModelScope.launch {
+            val cycle = _uiState.value.cycleStatus?.currentCycle ?: return@launch
+            mikvehRepository.deleteCycle(cycle)
+            loadData()
+            _uiState.update {
+                it.copy(showDeleteCycleDialog = false, successMessage = "המחזור נמחק")
+            }
+        }
+    }
+
     fun addDailyCheck(dayNumber: Int, isClean: Boolean, note: String = "") {
         viewModelScope.launch {
             val cycleId = _uiState.value.cycleStatus?.currentCycle?.id ?: return@launch
@@ -91,9 +100,19 @@ class MikvehViewModel @Inject constructor(
         }
     }
 
+    fun deleteTevilah(record: TevilahRecord) {
+        viewModelScope.launch {
+            mikvehRepository.deleteTevilah(record)
+            loadData()
+            _uiState.update { it.copy(successMessage = "הרשומה נמחקה") }
+        }
+    }
+
     fun showAddCycleDialog() = _uiState.update { it.copy(showAddCycleDialog = true) }
     fun hideAddCycleDialog() = _uiState.update { it.copy(showAddCycleDialog = false) }
     fun showDailyCheckDialog() = _uiState.update { it.copy(showDailyCheckDialog = true) }
     fun hideDailyCheckDialog() = _uiState.update { it.copy(showDailyCheckDialog = false) }
+    fun showDeleteCycleDialog() = _uiState.update { it.copy(showDeleteCycleDialog = true) }
+    fun hideDeleteCycleDialog() = _uiState.update { it.copy(showDeleteCycleDialog = false) }
     fun clearMessage() = _uiState.update { it.copy(successMessage = null) }
 }

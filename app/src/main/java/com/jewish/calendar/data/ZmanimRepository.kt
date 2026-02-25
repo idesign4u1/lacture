@@ -32,7 +32,7 @@ class ZmanimRepository @Inject constructor() {
             calendar = cal
         }
 
-        val jewishCal = JewishCalendar(cal)
+        val jewishCal = JewishCalendar(cal).apply { inIsrael = true }
         val isShabbat = jewishCal.dayOfWeek == Calendar.SATURDAY
         val isErevShabbat = jewishCal.dayOfWeek == Calendar.FRIDAY
 

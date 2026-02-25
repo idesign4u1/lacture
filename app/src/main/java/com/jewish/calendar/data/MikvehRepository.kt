@@ -27,17 +27,15 @@ class MikvehRepository @Inject constructor(
         }
     }
 
+    suspend fun deleteCycle(cycle: CycleRecord) {
+        cleanDayDao.deleteChecksForCycle(cycle.id)
+        cycleDao.deleteCycle(cycle)
+    }
+
     suspend fun getCycleStatus(): CycleStatus {
         val today = Calendar.getInstance()
-        val todayStart = Calendar.getInstance().apply {
-            set(Calendar.HOUR_OF_DAY, 0)
-            set(Calendar.MINUTE, 0)
-            set(Calendar.SECOND, 0)
-            set(Calendar.MILLISECOND, 0)
-        }
 
         val latestCycle = cycleDao.getLatestCycle()
-        val activeCycle = cycleDao.getActiveCycle()
 
         if (latestCycle == null) {
             return CycleStatus(
@@ -56,11 +54,10 @@ class MikvehRepository @Inject constructor(
 
         val isInPeriod = endDate == null && daysBetween(startDate, today) < 14
 
-        // Seven clean days start after period ends (at least 5 days from start)
         val cleanDaysStart = endDate?.let { end ->
             Calendar.getInstance().apply {
                 timeInMillis = end.timeInMillis
-                add(Calendar.DAY_OF_MONTH, 1) // Day after period ends
+                add(Calendar.DAY_OF_MONTH, 1)
             }
         }
 
@@ -73,20 +70,18 @@ class MikvehRepository @Inject constructor(
 
         val isInSevenCleanDays = cleanDayNumber != null
 
-        // Tevilah is on night of day 7 of clean days
         val projectedTevilahDate = cleanDaysStart?.let { cleanStart ->
             Calendar.getInstance().apply {
                 timeInMillis = cleanStart.timeInMillis
-                add(Calendar.DAY_OF_MONTH, 6) // Day 7 of clean days (0-indexed)
+                add(Calendar.DAY_OF_MONTH, 6)
                 set(Calendar.HOUR_OF_DAY, 20)
                 set(Calendar.MINUTE, 0)
             }.time
         }
 
-        // Estimate next veset: average cycle is 28-30 days
         val nextVesetDate = Calendar.getInstance().apply {
             timeInMillis = latestCycle.startDate
-            add(Calendar.DAY_OF_MONTH, 30) // Using 30-day average
+            add(Calendar.DAY_OF_MONTH, 30)
         }.time
 
         val checks = cleanDaysStart?.let {
@@ -124,46 +119,15 @@ class MikvehRepository @Inject constructor(
         return tevilahDao.insertTevilah(record)
     }
 
+    suspend fun deleteTevilah(record: TevilahRecord) {
+        tevilahDao.deleteTevilah(record)
+    }
+
     suspend fun getTevilahHistory(): List<TevilahRecord> = tevilahDao.getAllTevilahs()
 
     private fun daysBetween(start: Calendar, end: Calendar): Int {
         val startMillis = start.timeInMillis
         val endMillis = end.timeInMillis
         return ((endMillis - startMillis) / (1000 * 60 * 60 * 24)).toInt()
-    }
-
-    // Nearby mikveh locations (would connect to a real API/database)
-    fun getNearbyMikvaot(lat: Double, lng: Double): List<MikvehLocation> {
-        // Placeholder data - in production connect to Google Places API
-        return listOf(
-            MikvehLocation(
-                id = "1",
-                name = "מקווה המרכזית ירושלים",
-                address = "רחוב יפו 22, ירושלים",
-                city = "ירושלים",
-                latitude = 31.7783,
-                longitude = 35.2137,
-                phone = "02-6234567",
-                openingHours = "א'-ה': 19:00-23:00 | ו': 15:00-17:00",
-                hasAppointment = true,
-                appointmentUrl = null,
-                isAccessible = true,
-                rating = 4.5f
-            ),
-            MikvehLocation(
-                id = "2",
-                name = "מקווה בית חנה",
-                address = "שד' בן גוריון 8, תל אביב",
-                city = "תל אביב",
-                latitude = 32.0753,
-                longitude = 34.7818,
-                phone = "03-5234567",
-                openingHours = "בימי א'-ה' 20:00-23:00",
-                hasAppointment = false,
-                appointmentUrl = null,
-                isAccessible = true,
-                rating = 4.2f
-            )
-        )
     }
 }

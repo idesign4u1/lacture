@@ -19,6 +19,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.jewish.calendar.data.CalendarEvent
 import com.jewish.calendar.model.HebrewDateModel
 import com.jewish.calendar.ui.theme.*
 import com.jewish.calendar.viewmodel.CalendarViewModel
@@ -41,6 +42,16 @@ fun CalendarScreen(
                 onNextMonth = { viewModel.navigateMonth(true) },
                 onTodayClick = { viewModel.goToToday() }
             )
+        },
+        floatingActionButton = {
+            if (uiState.selectedDate != null) {
+                FloatingActionButton(
+                    onClick = { viewModel.showAddEventDialog() },
+                    containerColor = MaterialTheme.colorScheme.primary
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = "הוסף אירוע", tint = Color.White)
+                }
+            }
         }
     ) { padding ->
         Column(
@@ -74,9 +85,24 @@ fun CalendarScreen(
 
                 // Selected day details
                 uiState.selectedDate?.let { selected ->
-                    SelectedDayDetails(selected, viewModel)
+                    SelectedDayDetails(
+                        dateModel = selected,
+                        events = uiState.selectedDayEvents,
+                        viewModel = viewModel
+                    )
                 }
             }
+        }
+    }
+
+    // Add event dialog
+    if (uiState.showAddEventDialog) {
+        uiState.selectedDate?.let { selectedDate ->
+            AddEventDialog(
+                selectedDate = selectedDate,
+                onConfirm = { title, desc -> viewModel.addEvent(title, desc) },
+                onDismiss = { viewModel.hideAddEventDialog() }
+            )
         }
     }
 }
@@ -243,11 +269,9 @@ private fun CalendarGrid(
 ) {
     if (days.isEmpty()) return
 
-    // Find the day of week of first day (1=Sunday, 7=Saturday in Hebrew calendar)
     val firstDayCal = Calendar.getInstance().apply {
         set(displayYear, displayMonth - 1, 1)
     }
-    // Convert to 0-indexed Sunday start (Hebrew calendar: Sunday=1, Shabbat=7)
     val firstDayOfWeek = (firstDayCal.get(Calendar.DAY_OF_WEEK) - Calendar.SUNDAY)
 
     val todayFormatter = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
@@ -258,7 +282,6 @@ private fun CalendarGrid(
         modifier = Modifier.padding(horizontal = 4.dp),
         userScrollEnabled = false
     ) {
-        // Empty cells before first day
         items(firstDayOfWeek) {
             Box(modifier = Modifier.aspectRatio(1f))
         }
@@ -315,21 +338,18 @@ private fun DayCell(
         contentAlignment = Alignment.Center
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            // Gregorian day
             Text(
                 text = gregorianDay.toString(),
                 fontSize = 13.sp,
                 fontWeight = if (isToday || isSelected) FontWeight.Bold else FontWeight.Normal,
                 color = textColor
             )
-            // Hebrew day (gematria)
             Text(
                 text = com.jewish.calendar.model.HebrewNumbers.toGematria(dayModel.hebrewDay),
                 fontSize = 8.sp,
                 color = textColor.copy(alpha = 0.7f),
                 lineHeight = 9.sp
             )
-            // Dot indicator for holidays
             if (dayModel.isHoliday || dayModel.isRoshChodesh) {
                 Box(
                     modifier = Modifier
@@ -348,6 +368,7 @@ private fun DayCell(
 @Composable
 private fun SelectedDayDetails(
     dateModel: HebrewDateModel,
+    events: List<CalendarEvent>,
     viewModel: CalendarViewModel
 ) {
     val cal = Calendar.getInstance().apply { time = dateModel.gregorianDate }
@@ -391,12 +412,110 @@ private fun SelectedDayDetails(
             InfoChip("פרשת $it", Icons.Default.MenuBook, MaterialTheme.colorScheme.primary)
         }
         dateModel.omerCount?.let { count ->
-            InfoChip(
-                viewModel.getOmerText(count),
-                Icons.Default.Grain,
-                OmerGreen
+            InfoChip(viewModel.getOmerText(count), Icons.Default.Grain, OmerGreen)
+        }
+
+        // Events section
+        if (events.isNotEmpty()) {
+            Spacer(modifier = Modifier.height(12.dp))
+            Divider()
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "אירועים ומשימות",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Spacer(Modifier.width(6.dp))
+                Icon(
+                    Icons.Default.Event,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+            Spacer(modifier = Modifier.height(4.dp))
+            events.forEach { event ->
+                EventItem(event = event, onDelete = { viewModel.deleteEvent(event) })
+            }
+        }
+    }
+}
+
+@Composable
+private fun EventItem(event: CalendarEvent, onDelete: () -> Unit) {
+    var showConfirm by remember { mutableStateOf(false) }
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.secondaryContainer
+        )
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(onClick = { showConfirm = true }, modifier = Modifier.size(32.dp)) {
+                Icon(
+                    Icons.Default.Delete,
+                    contentDescription = "מחק",
+                    tint = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+            Column(horizontalAlignment = Alignment.End, modifier = Modifier.weight(1f)) {
+                Text(
+                    text = event.title,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer,
+                    textAlign = TextAlign.End
+                )
+                if (event.description.isNotBlank()) {
+                    Text(
+                        text = event.description,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.7f),
+                        textAlign = TextAlign.End
+                    )
+                }
+            }
+            Spacer(Modifier.width(4.dp))
+            Icon(
+                Icons.Default.Circle,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(8.dp)
             )
         }
+    }
+
+    if (showConfirm) {
+        AlertDialog(
+            onDismissRequest = { showConfirm = false },
+            title = { Text("מחיקת אירוע") },
+            text = { Text("למחוק את \"${event.title}\"?") },
+            confirmButton = {
+                Button(
+                    onClick = { showConfirm = false; onDelete() },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) { Text("מחק") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showConfirm = false }) { Text("ביטול") }
+            }
+        )
     }
 }
 
@@ -427,4 +546,56 @@ private fun InfoChip(
         Spacer(modifier = Modifier.width(8.dp))
         Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(18.dp))
     }
+}
+
+@Composable
+private fun AddEventDialog(
+    selectedDate: HebrewDateModel,
+    onConfirm: (String, String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    var title by remember { mutableStateOf("") }
+    var description by remember { mutableStateOf("") }
+    val gregFormatter = SimpleDateFormat("d/M/yyyy", Locale.getDefault())
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                "הוסף אירוע - ${gregFormatter.format(selectedDate.gregorianDate)}",
+                textAlign = TextAlign.End,
+                modifier = Modifier.fillMaxWidth()
+            )
+        },
+        text = {
+            Column {
+                OutlinedTextField(
+                    value = title,
+                    onValueChange = { title = it },
+                    label = { Text("כותרת האירוע") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+                Spacer(Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = description,
+                    onValueChange = { description = it },
+                    label = { Text("תיאור (אופציונלי)") },
+                    modifier = Modifier.fillMaxWidth(),
+                    maxLines = 3
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = { onConfirm(title.trim(), description.trim()) },
+                enabled = title.isNotBlank()
+            ) {
+                Text("הוסף")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("ביטול") }
+        }
+    )
 }

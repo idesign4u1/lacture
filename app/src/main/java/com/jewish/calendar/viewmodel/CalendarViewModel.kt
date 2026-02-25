@@ -2,6 +2,8 @@ package com.jewish.calendar.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.jewish.calendar.data.CalendarEvent
+import com.jewish.calendar.data.CalendarEventDao
 import com.jewish.calendar.data.HebrewCalendarRepository
 import com.jewish.calendar.model.HebrewDateModel
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -16,12 +18,15 @@ data class CalendarUiState(
     val currentMonthDays: List<HebrewDateModel> = emptyList(),
     val displayYear: Int = Calendar.getInstance().get(Calendar.YEAR),
     val displayMonth: Int = Calendar.getInstance().get(Calendar.MONTH) + 1,
-    val isLoading: Boolean = false
+    val isLoading: Boolean = false,
+    val selectedDayEvents: List<CalendarEvent> = emptyList(),
+    val showAddEventDialog: Boolean = false
 )
 
 @HiltViewModel
 class CalendarViewModel @Inject constructor(
-    private val calendarRepository: HebrewCalendarRepository
+    private val calendarRepository: HebrewCalendarRepository,
+    private val eventDao: CalendarEventDao
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(CalendarUiState(isLoading = true))
@@ -49,6 +54,7 @@ class CalendarViewModel @Inject constructor(
                     isLoading = false
                 )
             }
+            loadEventsForDate(today.gregorianDate)
         }
     }
 
@@ -76,6 +82,7 @@ class CalendarViewModel @Inject constructor(
 
     fun selectDate(dateModel: HebrewDateModel) {
         _uiState.update { it.copy(selectedDate = dateModel) }
+        loadEventsForDate(dateModel.gregorianDate)
     }
 
     fun goToToday() {
@@ -94,8 +101,52 @@ class CalendarViewModel @Inject constructor(
                     displayMonth = month
                 )
             }
+            loadEventsForDate(today.gregorianDate)
         }
     }
 
     fun getOmerText(count: Int): String = calendarRepository.getOmerText(count)
+
+    // --- Event management ---
+
+    private fun loadEventsForDate(date: Date) {
+        viewModelScope.launch {
+            val cal = Calendar.getInstance().apply {
+                time = date
+                set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0)
+                set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
+            }
+            val startOfDay = cal.timeInMillis
+            cal.add(Calendar.DAY_OF_MONTH, 1)
+            val endOfDay = cal.timeInMillis
+            val events = eventDao.getEventsForDate(startOfDay, endOfDay)
+            _uiState.update { it.copy(selectedDayEvents = events) }
+        }
+    }
+
+    fun showAddEventDialog() = _uiState.update { it.copy(showAddEventDialog = true) }
+    fun hideAddEventDialog() = _uiState.update { it.copy(showAddEventDialog = false) }
+
+    fun addEvent(title: String, description: String) {
+        viewModelScope.launch {
+            val selectedDate = _uiState.value.selectedDate?.gregorianDate ?: return@launch
+            val cal = Calendar.getInstance().apply {
+                time = selectedDate
+                set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0)
+                set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
+            }
+            eventDao.insertEvent(
+                CalendarEvent(date = cal.timeInMillis, title = title, description = description)
+            )
+            loadEventsForDate(selectedDate)
+            _uiState.update { it.copy(showAddEventDialog = false) }
+        }
+    }
+
+    fun deleteEvent(event: CalendarEvent) {
+        viewModelScope.launch {
+            eventDao.deleteEvent(event)
+            _uiState.value.selectedDate?.gregorianDate?.let { loadEventsForDate(it) }
+        }
+    }
 }

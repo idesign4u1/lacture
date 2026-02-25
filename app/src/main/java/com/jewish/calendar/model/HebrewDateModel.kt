@@ -54,28 +54,25 @@ object HebrewNumbers {
     fun toGematria(number: Int): String {
         if (number <= 0 || number > 9999) return number.toString()
 
+        // Handle special cases: 15 = ט"ו, 16 = ט"ז (avoid יה / יו)
+        if (number % 100 == 15) return "ט\"ו"
+        if (number % 100 == 16) return "ט\"ז"
+
         var n = number
         val sb = StringBuilder()
 
-        // Handle special cases: 15 = טו, 16 = טז
-        if (n % 100 == 15) {
-            sb.append("ט\"ו")
-            n -= 15
-        } else if (n % 100 == 16) {
-            sb.append("ט\"ז")
-            n -= 16
-        } else {
-            val hundredsDigit = n / 100
-            n %= 100
-            val tensDigit = n / 10
-            val onesDigit = n % 10
+        val hundredsDigit = n / 100
+        n %= 100
+        val tensDigit = n / 10
+        val onesDigit = n % 10
 
-            if (hundredsDigit > 0) sb.append(hundreds[hundredsDigit])
-            if (tensDigit > 0) sb.append(tens[tensDigit])
-            if (onesDigit > 0) sb.append(ones[onesDigit])
-        }
+        if (hundredsDigit > 0) sb.append(hundreds[hundredsDigit])
+        if (tensDigit > 0) sb.append(tens[tensDigit])
+        if (onesDigit > 0) sb.append(ones[onesDigit])
 
-        // Add gershayim before last letter if more than one letter
+        if (sb.isEmpty()) return number.toString()
+
+        // Add gershayim before last letter if more than one letter, else geresh
         return if (sb.length > 1) {
             sb.insert(sb.length - 1, "\"").toString()
         } else {

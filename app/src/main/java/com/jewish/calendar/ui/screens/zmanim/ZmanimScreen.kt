@@ -1,5 +1,7 @@
 package com.jewish.calendar.ui.screens.zmanim
 
+import android.annotation.SuppressLint
+import android.Manifest
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -11,6 +13,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -19,13 +22,14 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.rememberPermissionState
 import com.google.accompanist.permissions.isGranted
-import android.Manifest
+import com.google.android.gms.location.LocationServices
 import com.jewish.calendar.model.ZmanimModel
 import com.jewish.calendar.ui.theme.*
 import com.jewish.calendar.viewmodel.ZmanimViewModel
 import java.text.SimpleDateFormat
 import java.util.*
 
+@SuppressLint("MissingPermission")
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalPermissionsApi::class)
 @Composable
 fun ZmanimScreen(
@@ -33,6 +37,19 @@ fun ZmanimScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val locationPermission = rememberPermissionState(Manifest.permission.ACCESS_FINE_LOCATION)
+    val context = LocalContext.current
+    val fusedLocationClient = remember { LocationServices.getFusedLocationProviderClient(context) }
+
+    // Auto-load real GPS location whenever permission status changes to granted
+    LaunchedEffect(locationPermission.status.isGranted) {
+        if (locationPermission.status.isGranted) {
+            fusedLocationClient.lastLocation.addOnSuccessListener { location ->
+                location?.let { viewModel.onLocationGranted(it) }
+            }
+        } else {
+            viewModel.onLocationDenied()
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -45,7 +62,16 @@ fun ZmanimScreen(
                     )
                 },
                 actions = {
-                    IconButton(onClick = { viewModel.refreshZmanim() }) {
+                    IconButton(onClick = {
+                        if (locationPermission.status.isGranted) {
+                            fusedLocationClient.lastLocation.addOnSuccessListener { location ->
+                                if (location != null) viewModel.onLocationGranted(location)
+                                else viewModel.refreshZmanim()
+                            }
+                        } else {
+                            viewModel.refreshZmanim()
+                        }
+                    }) {
                         Icon(Icons.Default.Refresh, contentDescription = "רענן")
                     }
                     IconButton(onClick = { locationPermission.launchPermissionRequest() }) {
@@ -81,10 +107,8 @@ fun ZmanimScreen(
                 }
             } else {
                 uiState.zmanim?.let { zmanim ->
-                    // Location header
                     LocationHeader(zmanim)
 
-                    // Shabbat / Yom Tov special bar
                     if (zmanim.isShabbat || zmanim.isYomTov) {
                         ShabbatBar(zmanim)
                     }
@@ -92,7 +116,6 @@ fun ZmanimScreen(
                         ErevShabbatBar(zmanim)
                     }
 
-                    // Zmanim sections
                     ZmanimSection(
                         title = "בוקר",
                         icon = Icons.Default.WbSunny,
@@ -112,8 +135,7 @@ fun ZmanimScreen(
                         items = buildEveningZmanim(zmanim)
                     )
 
-                    // Location note
-                    if (!uiState.hasLocationPermission) {
+                    if (!locationPermission.status.isGranted) {
                         LocationNote { locationPermission.launchPermissionRequest() }
                     }
                 }
@@ -280,7 +302,6 @@ private fun ZmanimRow(item: ZmanimItem) {
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Time (LTR direction)
         Text(
             text = item.time,
             style = MaterialTheme.typography.titleMedium,
@@ -288,7 +309,6 @@ private fun ZmanimRow(item: ZmanimItem) {
             color = if (item.isHighlighted) item.highlightColor else MaterialTheme.colorScheme.onSurface,
             fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
         )
-        // Label (RTL direction)
         Text(
             text = item.label,
             style = MaterialTheme.typography.bodyMedium,
@@ -348,7 +368,6 @@ private fun ErrorCard(error: String) {
     }
 }
 
-// Helper functions to build zmanim items
 private fun buildMorningZmanim(zmanim: ZmanimModel): List<ZmanimItem> {
     val fmt = SimpleDateFormat("HH:mm", Locale.getDefault())
     return listOfNotNull(

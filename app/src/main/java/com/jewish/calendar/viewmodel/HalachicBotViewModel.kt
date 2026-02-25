@@ -2,6 +2,7 @@ package com.jewish.calendar.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.jewish.calendar.BuildConfig
 import com.jewish.calendar.data.ClaudeMessage
 import com.jewish.calendar.data.ClaudeRepository
 import com.jewish.calendar.model.ChatMessage
@@ -28,11 +29,17 @@ class HalachicBotViewModel @Inject constructor(
     val uiState: StateFlow<BotUiState> = _uiState.asStateFlow()
 
     private val conversationHistory = mutableListOf<ClaudeMessage>()
-    private var apiKey: String = ""
+
+    // Use the API key embedded at build time from local.properties
+    private var apiKey: String = BuildConfig.CLAUDE_API_KEY
+
+    init {
+        _uiState.update { it.copy(apiKeyMissing = apiKey.isBlank()) }
+    }
 
     fun setApiKey(key: String) {
-        apiKey = key
-        _uiState.update { it.copy(apiKeyMissing = key.isBlank()) }
+        apiKey = key.trim()
+        _uiState.update { it.copy(apiKeyMissing = apiKey.isBlank()) }
     }
 
     fun onInputChanged(text: String) {
@@ -75,11 +82,9 @@ class HalachicBotViewModel @Inject constructor(
             )
 
             result.onSuccess { answer ->
-                // Update conversation history for context
                 conversationHistory.add(ClaudeMessage("user", question))
                 conversationHistory.add(ClaudeMessage("assistant", answer))
 
-                // Keep history manageable (last 10 exchanges)
                 if (conversationHistory.size > 20) {
                     repeat(2) { conversationHistory.removeAt(0) }
                 }
