@@ -1,7 +1,6 @@
 package com.jewish.calendar.data
 
 import com.jewish.calendar.model.HALACHIC_SYSTEM_PROMPT
-import com.jewish.calendar.model.HalachicSource
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
@@ -15,7 +14,7 @@ import javax.inject.Singleton
 
 // Claude API data classes
 data class ClaudeRequest(
-    val model: String = "claude-sonnet-4-6",
+    val model: String = "claude-3-5-sonnet-20241022",
     @SerializedName("max_tokens") val maxTokens: Int = 1024,
     val system: String = HALACHIC_SYSTEM_PROMPT,
     val messages: List<ClaudeMessage>

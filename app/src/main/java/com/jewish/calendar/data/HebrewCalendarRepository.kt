@@ -115,26 +115,42 @@ class HebrewCalendarRepository @Inject constructor() {
     }
 
     private fun getHolidayName(index: Int): String? = when (index) {
+        // ימים נוראים
+        JewishCalendar.EREV_ROSH_HASHANA -> "ערב ראש השנה"
         JewishCalendar.ROSH_HASHANA -> "ראש השנה"
+        JewishCalendar.FAST_OF_GEDALYAH -> "צום גדליה"
         JewishCalendar.YOM_KIPPUR -> "יום כיפור"
+        // סוכות
+        JewishCalendar.EREV_SUCCOS -> "ערב סוכות"
         JewishCalendar.SUCCOS -> "סוכות"
         JewishCalendar.CHOL_HAMOED_SUCCOS -> "חול המועד סוכות"
         JewishCalendar.HOSHANA_RABBA -> "הושענא רבה"
         JewishCalendar.SHEMINI_ATZERES -> "שמיני עצרת"
         JewishCalendar.SIMCHAS_TORAH -> "שמחת תורה"
+        // חנוכה ועוד
         JewishCalendar.CHANUKAH -> "חנוכה"
+        JewishCalendar.TENTH_OF_TEVES -> "עשרה בטבת"
         JewishCalendar.TU_BESHVAT -> "ט\"ו בשבט"
+        // פורים
         JewishCalendar.PURIM_KATAN -> "פורים קטן"
+        JewishCalendar.FAST_OF_ESTHER -> "תענית אסתר"
         JewishCalendar.PURIM -> "פורים"
         JewishCalendar.SHUSHAN_PURIM -> "שושן פורים"
+        // פסח
+        JewishCalendar.EREV_PESACH -> "ערב פסח"
         JewishCalendar.PESACH -> "פסח"
         JewishCalendar.CHOL_HAMOED_PESACH -> "חול המועד פסח"
         JewishCalendar.PESACH_SHENI -> "פסח שני"
+        // עומר וספירה
         JewishCalendar.LAG_BAOMER -> "ל\"ג בעומר"
+        // שבועות
+        JewishCalendar.EREV_SHAVUOS -> "ערב שבועות"
         JewishCalendar.SHAVUOS -> "שבועות"
+        // בין המצרים
         JewishCalendar.SEVENTEEN_OF_TAMMUZ -> "י\"ז בתמוז"
         JewishCalendar.TISHA_BEAV -> "תשעה באב"
         JewishCalendar.TU_BEAV -> "ט\"ו באב"
+        // ישראל מודרני
         JewishCalendar.YOM_HASHOAH -> "יום הזיכרון לשואה"
         JewishCalendar.YOM_HAZIKARON -> "יום הזיכרון"
         JewishCalendar.YOM_HAATZMAUT -> "יום העצמאות"
