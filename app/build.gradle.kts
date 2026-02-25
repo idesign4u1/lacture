@@ -25,6 +25,8 @@ android {
         buildConfigField("String", "CLAUDE_API_KEY", "\"${project.findProperty("CLAUDE_API_KEY") ?: ""}\"")
         buildConfigField("String", "CLAUDE_API_BASE", "\"https://api.anthropic.com/v1/\"")
         buildConfigField("String", "GOOGLE_MAPS_KEY", "\"${project.findProperty("GOOGLE_MAPS_KEY") ?: ""}\"")
+
+        manifestPlaceholders["GOOGLE_MAPS_KEY"] = project.findProperty("GOOGLE_MAPS_KEY") ?: ""
     }
 
     buildTypes {
