@@ -37,7 +37,6 @@ fun HalachicBotScreen(
     val uiState by viewModel.uiState.collectAsState()
     val listState = rememberLazyListState()
     val keyboardController = LocalSoftwareKeyboardController.current
-    var showApiKeyDialog by remember { mutableStateOf(false) }
 
     // Auto-scroll to last message
     LaunchedEffect(uiState.messages.size) {
@@ -78,9 +77,6 @@ fun HalachicBotScreen(
                     }
                 },
                 actions = {
-                    IconButton(onClick = { showApiKeyDialog = true }) {
-                        Icon(Icons.Default.Key, contentDescription = "מפתח API")
-                    }
                     IconButton(onClick = { viewModel.clearConversation() }) {
                         Icon(Icons.Default.Delete, contentDescription = "נקה שיחה")
                     }
@@ -108,11 +104,6 @@ fun HalachicBotScreen(
                 .padding(padding)
                 .background(MaterialTheme.colorScheme.background)
         ) {
-            // API key warning
-            if (uiState.apiKeyMissing) {
-                ApiKeyWarning(onClick = { showApiKeyDialog = true })
-            }
-
             // Disclaimer banner
             DisclaimerBanner()
 
@@ -141,16 +132,6 @@ fun HalachicBotScreen(
         }
     }
 
-    // API Key dialog
-    if (showApiKeyDialog) {
-        ApiKeyDialog(
-            onConfirm = { key ->
-                viewModel.setApiKey(key)
-                showApiKeyDialog = false
-            },
-            onDismiss = { showApiKeyDialog = false }
-        )
-    }
 }
 
 @Composable
@@ -178,32 +159,6 @@ private fun DisclaimerBanner() {
                 tint = Gold80,
                 modifier = Modifier.size(14.dp)
             )
-        }
-    }
-}
-
-@Composable
-private fun ApiKeyWarning(onClick: () -> Unit) {
-    Surface(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { onClick() },
-        color = HolidayRed.copy(alpha = 0.1f)
-    ) {
-        Row(
-            modifier = Modifier.padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.End
-        ) {
-            Text(
-                text = "נא להזין מפתח Claude API להפעלת הבוט",
-                style = MaterialTheme.typography.bodySmall,
-                color = HolidayRed,
-                modifier = Modifier.weight(1f),
-                textAlign = TextAlign.End
-            )
-            Spacer(Modifier.width(4.dp))
-            Icon(Icons.Default.Warning, contentDescription = null, tint = HolidayRed, modifier = Modifier.size(16.dp))
         }
     }
 }
@@ -460,64 +415,3 @@ private fun ErrorBanner(error: String, onDismiss: () -> Unit) {
     }
 }
 
-@Composable
-private fun ApiKeyDialog(
-    onConfirm: (String) -> Unit,
-    onDismiss: () -> Unit
-) {
-    var apiKey by remember { mutableStateOf("") }
-    var showKey by remember { mutableStateOf(false) }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = {
-            Text(
-                "הגדרת מפתח Claude API",
-                textAlign = TextAlign.End,
-                modifier = Modifier.fillMaxWidth()
-            )
-        },
-        text = {
-            Column {
-                Text(
-                    "נדרש מפתח API מ-Anthropic להפעלת הבוט ההלכתי",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = TextAlign.End,
-                    modifier = Modifier.fillMaxWidth()
-                )
-                Spacer(Modifier.height(8.dp))
-                OutlinedTextField(
-                    value = apiKey,
-                    onValueChange = { apiKey = it },
-                    label = { Text("מפתח API") },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true,
-                    visualTransformation = if (showKey)
-                        androidx.compose.ui.text.input.VisualTransformation.None
-                    else
-                        androidx.compose.ui.text.input.PasswordVisualTransformation(),
-                    trailingIcon = {
-                        IconButton(onClick = { showKey = !showKey }) {
-                            Icon(
-                                if (showKey) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                                contentDescription = null
-                            )
-                        }
-                    }
-                )
-            }
-        },
-        confirmButton = {
-            Button(
-                onClick = { onConfirm(apiKey) },
-                enabled = apiKey.isNotBlank()
-            ) {
-                Text("שמור")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text("ביטול") }
-        }
-    )
-}

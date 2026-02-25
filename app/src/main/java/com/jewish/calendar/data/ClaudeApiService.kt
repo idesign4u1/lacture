@@ -84,6 +84,10 @@ class ClaudeRepository @Inject constructor() {
             val response = api.sendMessage(apiKey, request)
             val answer = response.content.firstOrNull()?.text ?: "לא התקבלה תשובה"
             Result.success(answer)
+        } catch (e: retrofit2.HttpException) {
+            val code = e.code()
+            val body = e.response()?.errorBody()?.string() ?: e.message()
+            Result.failure(Exception("HTTP$code: $body"))
         } catch (e: Exception) {
             Result.failure(e)
         }

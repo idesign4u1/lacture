@@ -31,14 +31,14 @@ class HebrewCalendarRepository @Inject constructor() {
                 yomTovIndex == JewishCalendar.FAST_OF_ESTHER ||
                 yomTovIndex == JewishCalendar.YOM_KIPPUR
 
-        val holidayName = if (yomTovIndex >= 0) {
-            getHolidayName(yomTovIndex)
-        } else if (isRoshChodesh) {
-            "ראש חודש ${formatter.formatMonth(jewishCalendar)}"
-        } else null
+        val holidayName = when {
+            yomTovIndex >= 0 && yomTovIndex != JewishCalendar.ROSH_CHODESH -> getHolidayName(yomTovIndex)
+            isRoshChodesh -> "ראש חודש ${formatter.formatMonth(jewishCalendar)}"
+            else -> null
+        }
 
         val parshaName = try {
-            if (isShabbat) formatter.formatParsha(jewishCalendar) else null
+            if (isShabbat) formatter.formatParsha(jewishCalendar).takeIf { it.isNotBlank() } else null
         } catch (e: Exception) { null }
 
         val omerCount = try {
@@ -93,7 +93,7 @@ class HebrewCalendarRepository @Inject constructor() {
             if (days > 0) {
                 sb.append(" ו-")
                 sb.append(HebrewNumbers.toGematria(days))
-                sb.append(" ימים")
+                sb.append(if (days == 1) " יום" else " ימים")
             }
         }
         sb.append(" לעומר")

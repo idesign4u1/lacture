@@ -16,7 +16,6 @@ data class BotUiState(
     val messages: List<ChatMessage> = emptyList(),
     val inputText: String = "",
     val isLoading: Boolean = false,
-    val apiKeyMissing: Boolean = false,
     val error: String? = null
 )
 
@@ -33,25 +32,12 @@ class HalachicBotViewModel @Inject constructor(
     // Use the API key embedded at build time from local.properties
     private var apiKey: String = BuildConfig.CLAUDE_API_KEY
 
-    init {
-        _uiState.update { it.copy(apiKeyMissing = apiKey.isBlank()) }
-    }
-
-    fun setApiKey(key: String) {
-        apiKey = key.trim()
-        _uiState.update { it.copy(apiKeyMissing = apiKey.isBlank()) }
-    }
-
     fun onInputChanged(text: String) {
         _uiState.update { it.copy(inputText = text) }
     }
 
     fun sendMessage(question: String = _uiState.value.inputText) {
         if (question.isBlank()) return
-        if (apiKey.isBlank()) {
-            _uiState.update { it.copy(apiKeyMissing = true) }
-            return
-        }
 
         val userMessage = ChatMessage(
             id = UUID.randomUUID().toString(),
@@ -103,8 +89,11 @@ class HalachicBotViewModel @Inject constructor(
                 }
             }.onFailure { error ->
                 val errorMessage = when {
-                    error.message?.contains("401") == true -> "מפתח API לא תקין"
-                    error.message?.contains("network") == true -> "שגיאת רשת - בדוק חיבור"
+                    error.message?.contains("401") == true -> "מפתח API לא תקין (401)"
+                    error.message?.contains("400") == true -> "שגיאה בבקשה לשרת (400)"
+                    error.message?.contains("429") == true -> "חריגה ממגבלת בקשות - נסה שוב בעוד רגע"
+                    error.message?.contains("network") == true ||
+                    error.message?.contains("timeout") == true -> "שגיאת רשת - בדוק חיבור לאינטרנט"
                     else -> "שגיאה: ${error.message}"
                 }
                 _uiState.update {
