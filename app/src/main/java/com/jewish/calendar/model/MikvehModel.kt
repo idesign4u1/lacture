@@ -9,7 +9,7 @@ import java.util.Date
 data class CycleRecord(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val startDate: Long,         // Unix timestamp
-    val endDate: Long?,          // null if ongoing
+    val endDate: Long? = null,   // null if ongoing
     val notes: String = "",
     val flowIntensity: FlowIntensity = FlowIntensity.MEDIUM
 )
