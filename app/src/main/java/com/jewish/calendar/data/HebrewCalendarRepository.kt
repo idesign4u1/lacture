@@ -24,7 +24,12 @@ class HebrewCalendarRepository @Inject constructor() {
         val yomTovIndex = jewishCalendar.yomTovIndex
         val isYomTov = jewishCalendar.isYomTovAssurBemelacha
         val isRoshChodesh = jewishCalendar.isRoshChodesh
-        val isFastDay = jewishCalendar.isTaanit
+        val isFastDay = yomTovIndex == JewishCalendar.SEVENTEEN_OF_TAMMUZ ||
+                yomTovIndex == JewishCalendar.TISHA_BEAV ||
+                yomTovIndex == JewishCalendar.FAST_OF_GEDALYAH ||
+                yomTovIndex == JewishCalendar.TENTH_OF_TEVES ||
+                yomTovIndex == JewishCalendar.FAST_OF_ESTHER ||
+                yomTovIndex == JewishCalendar.YOM_KIPPUR
 
         val holidayName = if (yomTovIndex >= 0) {
             getHolidayName(yomTovIndex)
