@@ -2,9 +2,9 @@ package com.jewish.calendar.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.jewish.calendar.BuildConfig
 import com.jewish.calendar.data.ClaudeMessage
 import com.jewish.calendar.data.ClaudeRepository
-import com.jewish.calendar.data.UserPreferencesRepository
 import com.jewish.calendar.model.ChatMessage
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
@@ -21,8 +21,7 @@ data class BotUiState(
 
 @HiltViewModel
 class HalachicBotViewModel @Inject constructor(
-    private val claudeRepository: ClaudeRepository,
-    private val userPrefs: UserPreferencesRepository
+    private val claudeRepository: ClaudeRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(BotUiState())
@@ -30,9 +29,8 @@ class HalachicBotViewModel @Inject constructor(
 
     private val conversationHistory = mutableListOf<ClaudeMessage>()
 
-    // Live API key from DataStore (falls back to BuildConfig if not set by user)
-    private val apiKey: StateFlow<String> = userPrefs.openAiApiKey
-        .stateIn(viewModelScope, SharingStarted.Eagerly, "")
+    // API key is embedded in the app at build time from local.properties
+    private val apiKey: String = BuildConfig.OPENAI_API_KEY
 
     fun onInputChanged(text: String) {
         _uiState.update { it.copy(inputText = text) }
@@ -49,22 +47,10 @@ class HalachicBotViewModel @Inject constructor(
         }
 
         viewModelScope.launch {
-            val currentKey = apiKey.value
-            if (currentKey.isBlank()) {
-                _uiState.update {
-                    it.copy(
-                        messages = it.messages.filter { m -> !m.isLoading },
-                        isLoading = false,
-                        error = "מפתח OpenAI API חסר — הגדר אותו בפרופיל שלך"
-                    )
-                }
-                return@launch
-            }
-
             val result = claudeRepository.askHalachicQuestion(
                 question = question,
                 conversationHistory = conversationHistory,
-                apiKey = currentKey
+                apiKey = apiKey
             )
 
             result.onSuccess { answer ->
@@ -81,8 +67,7 @@ class HalachicBotViewModel @Inject constructor(
                 }
             }.onFailure { error ->
                 val msg = when {
-                    error.message?.contains("401") == true ->
-                        "מפתח API לא תקין (401) — עדכן אותו בפרופיל שלך"
+                    error.message?.contains("401") == true -> "שגיאה: מפתח API לא תקין — פנה למפתח האפליקציה"
                     error.message?.contains("400") == true -> "שגיאה בבקשה לשרת (400)"
                     error.message?.contains("429") == true -> "חריגה ממגבלת בקשות — נסה שוב בעוד רגע"
                     error.message?.contains("network") == true ||

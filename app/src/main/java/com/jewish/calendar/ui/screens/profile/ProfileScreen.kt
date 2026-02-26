@@ -4,7 +4,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -14,7 +13,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
@@ -40,8 +38,6 @@ fun ProfileScreen(
     var gender by remember(uiState.user) { mutableStateOf(uiState.user?.gender ?: "") }
     var birthDate by remember(uiState.user) { mutableStateOf(uiState.user?.birthDate ?: "") }
     var maritalStatus by remember(uiState.user) { mutableStateOf(uiState.user?.maritalStatus ?: "") }
-    var apiKey by remember(uiState.openAiApiKey) { mutableStateOf(uiState.openAiApiKey) }
-    var apiKeyVisible by remember { mutableStateOf(false) }
 
     var showDatePicker by remember { mutableStateOf(false) }
     var showPasswordDialog by remember { mutableStateOf(false) }
@@ -208,46 +204,6 @@ fun ProfileScreen(
                 } else {
                     Text("שמור פרופיל", fontWeight = FontWeight.Bold)
                 }
-            }
-
-            Divider(Modifier.padding(vertical = 20.dp))
-
-            // ── OpenAI API Key ───────────────────────────────────────
-            SectionTitle("מפתח OpenAI API")
-            Text(
-                "נדרש עבור הרב AI. השג מפתח מ-platform.openai.com",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = TextAlign.End,
-                modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
-            )
-            OutlinedTextField(
-                value = apiKey,
-                onValueChange = { apiKey = it },
-                label = { Text("sk-proj-...") },
-                leadingIcon = { Icon(Icons.Default.Key, null) },
-                trailingIcon = {
-                    IconButton(onClick = { apiKeyVisible = !apiKeyVisible }) {
-                        Icon(
-                            if (apiKeyVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                            null
-                        )
-                    }
-                },
-                visualTransformation = if (apiKeyVisible) VisualTransformation.None
-                                       else PasswordVisualTransformation(),
-                modifier = Modifier.fillMaxWidth().padding(bottom = 10.dp),
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password)
-            )
-            Button(
-                onClick = { viewModel.saveApiKey(apiKey) },
-                modifier = Modifier.fillMaxWidth(),
-                enabled = apiKey.isNotBlank()
-            ) {
-                Icon(Icons.Default.Save, null, Modifier.size(18.dp))
-                Spacer(Modifier.width(6.dp))
-                Text("שמור מפתח API")
             }
 
             Divider(Modifier.padding(vertical = 20.dp))
