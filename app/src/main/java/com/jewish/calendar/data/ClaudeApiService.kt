@@ -6,51 +6,50 @@ import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import retrofit2.http.Body
-import retrofit2.http.Headers
+import retrofit2.http.Header
 import retrofit2.http.POST
 import com.google.gson.annotations.SerializedName
 import javax.inject.Inject
 import javax.inject.Singleton
 
-// Claude API data classes
-data class ClaudeRequest(
-    val model: String = "claude-3-5-sonnet-20241022",
-    @SerializedName("max_tokens") val maxTokens: Int = 1024,
-    val system: String = HALACHIC_SYSTEM_PROMPT,
-    val messages: List<ClaudeMessage>
+// OpenAI API data classes
+data class OpenAiRequest(
+    val model: String = "gpt-4o",
+    val messages: List<OpenAiMessage>,
+    @SerializedName("max_tokens") val maxTokens: Int = 1024
 )
 
-data class ClaudeMessage(
-    val role: String,   // "user" or "assistant"
+data class OpenAiMessage(
+    val role: String,   // "system", "user", or "assistant"
     val content: String
 )
 
-data class ClaudeResponse(
+data class OpenAiResponse(
     val id: String,
-    val type: String,
-    val role: String,
-    val content: List<ClaudeContent>,
-    val model: String,
-    val usage: ClaudeUsage
+    val choices: List<OpenAiChoice>,
+    val usage: OpenAiUsage
 )
 
-data class ClaudeContent(
-    val type: String,
-    val text: String
+data class OpenAiChoice(
+    val message: OpenAiMessage,
+    @SerializedName("finish_reason") val finishReason: String
 )
 
-data class ClaudeUsage(
-    @SerializedName("input_tokens") val inputTokens: Int,
-    @SerializedName("output_tokens") val outputTokens: Int
+data class OpenAiUsage(
+    @SerializedName("prompt_tokens") val promptTokens: Int,
+    @SerializedName("completion_tokens") val completionTokens: Int,
+    @SerializedName("total_tokens") val totalTokens: Int
 )
 
-interface ClaudeApiService {
-    @Headers("anthropic-version: 2023-06-01", "content-type: application/json")
-    @POST("messages")
+// Keep legacy type alias so HalachicBotViewModel doesn't need updating
+typealias ClaudeMessage = OpenAiMessage
+
+interface OpenAiApiService {
+    @POST("chat/completions")
     suspend fun sendMessage(
-        @retrofit2.http.Header("x-api-key") apiKey: String,
-        @Body request: ClaudeRequest
-    ): ClaudeResponse
+        @Header("Authorization") authorization: String,
+        @Body request: OpenAiRequest
+    ): OpenAiResponse
 }
 
 @Singleton
@@ -65,23 +64,28 @@ class ClaudeRepository @Inject constructor() {
         .build()
 
     private val retrofit = Retrofit.Builder()
-        .baseUrl("https://api.anthropic.com/v1/")
+        .baseUrl("https://api.openai.com/v1/")
         .client(client)
         .addConverterFactory(GsonConverterFactory.create())
         .build()
 
-    private val api = retrofit.create(ClaudeApiService::class.java)
+    private val api = retrofit.create(OpenAiApiService::class.java)
 
     suspend fun askHalachicQuestion(
         question: String,
-        conversationHistory: List<ClaudeMessage>,
+        conversationHistory: List<OpenAiMessage>,
         apiKey: String
     ): Result<String> {
         return try {
-            val messages = conversationHistory + ClaudeMessage("user", question)
-            val request = ClaudeRequest(messages = messages)
-            val response = api.sendMessage(apiKey, request)
-            val answer = response.content.firstOrNull()?.text ?: "לא התקבלה תשובה"
+            val messages = mutableListOf<OpenAiMessage>()
+            // OpenAI: system prompt is a message with role "system"
+            messages.add(OpenAiMessage("system", HALACHIC_SYSTEM_PROMPT))
+            messages.addAll(conversationHistory)
+            messages.add(OpenAiMessage("user", question))
+
+            val request = OpenAiRequest(messages = messages)
+            val response = api.sendMessage("Bearer $apiKey", request)
+            val answer = response.choices.firstOrNull()?.message?.content ?: "לא התקבלה תשובה"
             Result.success(answer)
         } catch (e: retrofit2.HttpException) {
             val code = e.code()

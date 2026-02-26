@@ -6,6 +6,7 @@ plugins {
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.kapt)
     alias(libs.plugins.hilt)
+    alias(libs.plugins.google.services)
 }
 
 val localProperties = Properties().also { props ->
@@ -28,9 +29,9 @@ android {
 
         // Hebcal API key (replace with real key)
         buildConfigField("String", "HEBCAL_API_BASE", "\"https://www.hebcal.com/\"")
-        // Claude AI API key - read directly from local.properties
-        buildConfigField("String", "CLAUDE_API_KEY", "\"${localProperties.getProperty("CLAUDE_API_KEY", "")}\"")
-        buildConfigField("String", "CLAUDE_API_BASE", "\"https://api.anthropic.com/v1/\"")
+        // OpenAI API key - read from local.properties
+        buildConfigField("String", "OPENAI_API_KEY", "\"${localProperties.getProperty("OPENAI_API_KEY", "")}\"")
+        buildConfigField("String", "OPENAI_API_BASE", "\"https://api.openai.com/v1/\"")
         buildConfigField("String", "GOOGLE_MAPS_KEY", "\"${localProperties.getProperty("GOOGLE_MAPS_KEY", "")}\"")
 
         manifestPlaceholders["GOOGLE_MAPS_KEY"] = localProperties.getProperty("GOOGLE_MAPS_KEY", "")
@@ -86,6 +87,7 @@ dependencies {
 
     // Coroutines
     implementation(libs.coroutines.android)
+    implementation(libs.coroutines.play.services)
 
     // Room
     implementation(libs.room.runtime)
@@ -107,6 +109,11 @@ dependencies {
     implementation(libs.maps.compose)
     implementation(libs.play.services.maps)
     implementation(libs.play.services.location)
+
+    // Firebase
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.auth)
+    implementation(libs.firebase.firestore)
 
     // Testing
     testImplementation(libs.junit)

@@ -29,8 +29,8 @@ class HalachicBotViewModel @Inject constructor(
 
     private val conversationHistory = mutableListOf<ClaudeMessage>()
 
-    // Use the API key embedded at build time from local.properties
-    private var apiKey: String = BuildConfig.CLAUDE_API_KEY
+    // Use the OpenAI API key embedded at build time from local.properties
+    private var apiKey: String = BuildConfig.OPENAI_API_KEY
 
     fun onInputChanged(text: String) {
         _uiState.update { it.copy(inputText = text) }

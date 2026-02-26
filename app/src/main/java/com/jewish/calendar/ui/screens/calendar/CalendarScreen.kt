@@ -194,7 +194,8 @@ private fun TodayHebrewHeader(
                     today.holidayName?.let {
                         HolidayBadge(it, if (today.isFastDay) FastDayGray else HolidayRed)
                     }
-                    if (today.isRoshChodesh) {
+                    // Show Rosh Chodesh badge only when holidayName doesn't already include it
+                    if (today.isRoshChodesh && today.holidayName == null) {
                         HolidayBadge("ראש חודש", OmerGreen)
                     }
                     today.additionalEvents.firstOrNull { it.startsWith("יארצייט") }?.let {
@@ -412,7 +413,7 @@ private fun SelectedDayDetails(
                 if (dateModel.isFastDay) FastDayGray else HolidayRed
             )
         }
-        if (dateModel.isRoshChodesh) {
+        if (dateModel.isRoshChodesh && dateModel.holidayName == null) {
             InfoChip("ראש חודש ${dateModel.hebrewMonthName}", Icons.Default.NightsStay, OmerGreen)
         }
         dateModel.parshaName?.let {

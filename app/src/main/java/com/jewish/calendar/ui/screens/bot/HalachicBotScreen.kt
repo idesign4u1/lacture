@@ -32,7 +32,8 @@ import com.jewish.calendar.viewmodel.HalachicBotViewModel
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HalachicBotScreen(
-    viewModel: HalachicBotViewModel = hiltViewModel()
+    viewModel: HalachicBotViewModel = hiltViewModel(),
+    onSignOut: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val listState = rememberLazyListState()
@@ -79,6 +80,9 @@ fun HalachicBotScreen(
                 actions = {
                     IconButton(onClick = { viewModel.clearConversation() }) {
                         Icon(Icons.Default.Delete, contentDescription = "נקה שיחה")
+                    }
+                    IconButton(onClick = onSignOut) {
+                        Icon(Icons.Default.Logout, contentDescription = "התנתקות")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(

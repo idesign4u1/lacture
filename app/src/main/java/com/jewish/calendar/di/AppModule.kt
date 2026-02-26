@@ -56,6 +56,10 @@ object AppModule {
 
     @Provides
     @Singleton
+    fun provideAuthRepository(): com.jewish.calendar.data.AuthRepository = com.jewish.calendar.data.AuthRepository()
+
+    @Provides
+    @Singleton
     fun provideMikvehRepository(
         cycleDao: CycleDao,
         cleanDayDao: CleanDayDao,
