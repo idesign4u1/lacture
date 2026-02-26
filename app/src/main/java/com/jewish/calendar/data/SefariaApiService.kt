@@ -8,6 +8,7 @@ import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import retrofit2.http.GET
 import retrofit2.http.Path
+import retrofit2.http.QueryMap
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -48,12 +49,10 @@ data class StudyItem(
 // ── Retrofit interface ────────────────────────────────────────────────
 
 interface SefariaApiService {
+    // Use @QueryMap so nullable/optional params don't confuse Kapt
     @GET("api/calendars")
     suspend fun getCalendars(
-        @Query("timezone") timezone: String = "Asia/Jerusalem",
-        @Query("year") year: Int? = null,
-        @Query("month") month: Int? = null,
-        @Query("day") day: Int? = null
+        @QueryMap params: Map<String, String>
     ): SefariaCalendarsResponse
 
     @GET("api/texts/{ref}")
@@ -97,11 +96,15 @@ class SefariaRepository @Inject constructor() {
     )
 
     suspend fun getDailyStudy(date: java.util.Date? = null): Result<List<StudyItem>> = try {
-        val cal = date?.let { java.util.Calendar.getInstance().apply { time = it } }
-        val year  = cal?.get(java.util.Calendar.YEAR)
-        val month = cal?.let { it.get(java.util.Calendar.MONTH) + 1 }  // Calendar months are 0-based
-        val day   = cal?.get(java.util.Calendar.DAY_OF_MONTH)
-        val items = api.getCalendars(year = year, month = month, day = day).calendarItems.mapNotNull { item ->
+        // Build query params map — avoids nullable Int? in Retrofit interface (Kapt issue)
+        val params = mutableMapOf("timezone" to "Asia/Jerusalem")
+        date?.let {
+            val cal = java.util.Calendar.getInstance().apply { time = it }
+            params["year"]  = cal.get(java.util.Calendar.YEAR).toString()
+            params["month"] = (cal.get(java.util.Calendar.MONTH) + 1).toString() // 0-based → 1-based
+            params["day"]   = cal.get(java.util.Calendar.DAY_OF_MONTH).toString()
+        }
+        val items = api.getCalendars(params).calendarItems.mapNotNull { item ->
             val match = studyKeywords.firstOrNull { (key, _) ->
                 item.title.en.contains(key, ignoreCase = true)
             }
