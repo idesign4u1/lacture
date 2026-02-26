@@ -2,9 +2,9 @@ package com.jewish.calendar.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.jewish.calendar.BuildConfig
 import com.jewish.calendar.data.ClaudeMessage
 import com.jewish.calendar.data.ClaudeRepository
+import com.jewish.calendar.data.UserPreferencesRepository
 import com.jewish.calendar.model.ChatMessage
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
@@ -21,7 +21,8 @@ data class BotUiState(
 
 @HiltViewModel
 class HalachicBotViewModel @Inject constructor(
-    private val claudeRepository: ClaudeRepository
+    private val claudeRepository: ClaudeRepository,
+    private val userPrefs: UserPreferencesRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(BotUiState())
@@ -29,8 +30,9 @@ class HalachicBotViewModel @Inject constructor(
 
     private val conversationHistory = mutableListOf<ClaudeMessage>()
 
-    // Use the OpenAI API key embedded at build time from local.properties
-    private var apiKey: String = BuildConfig.OPENAI_API_KEY
+    // Live API key from DataStore (falls back to BuildConfig if not set by user)
+    private val apiKey: StateFlow<String> = userPrefs.openAiApiKey
+        .stateIn(viewModelScope, SharingStarted.Eagerly, "")
 
     fun onInputChanged(text: String) {
         _uiState.update { it.copy(inputText = text) }
@@ -39,69 +41,56 @@ class HalachicBotViewModel @Inject constructor(
     fun sendMessage(question: String = _uiState.value.inputText) {
         if (question.isBlank()) return
 
-        val userMessage = ChatMessage(
-            id = UUID.randomUUID().toString(),
-            content = question,
-            isUser = true
-        )
-        val loadingMessage = ChatMessage(
-            id = "loading",
-            content = "",
-            isUser = false,
-            isLoading = true
-        )
+        val userMessage = ChatMessage(id = UUID.randomUUID().toString(), content = question, isUser = true)
+        val loadingMessage = ChatMessage(id = "loading", content = "", isUser = false, isLoading = true)
 
         _uiState.update {
-            it.copy(
-                messages = it.messages + userMessage + loadingMessage,
-                inputText = "",
-                isLoading = true,
-                error = null
-            )
+            it.copy(messages = it.messages + userMessage + loadingMessage, inputText = "", isLoading = true, error = null)
         }
 
         viewModelScope.launch {
+            val currentKey = apiKey.value
+            if (currentKey.isBlank()) {
+                _uiState.update {
+                    it.copy(
+                        messages = it.messages.filter { m -> !m.isLoading },
+                        isLoading = false,
+                        error = "מפתח OpenAI API חסר — הגדר אותו בפרופיל שלך"
+                    )
+                }
+                return@launch
+            }
+
             val result = claudeRepository.askHalachicQuestion(
                 question = question,
                 conversationHistory = conversationHistory,
-                apiKey = apiKey
+                apiKey = currentKey
             )
 
             result.onSuccess { answer ->
                 conversationHistory.add(ClaudeMessage("user", question))
                 conversationHistory.add(ClaudeMessage("assistant", answer))
-
-                if (conversationHistory.size > 20) {
-                    repeat(2) { conversationHistory.removeAt(0) }
-                }
-
-                val botMessage = ChatMessage(
-                    id = UUID.randomUUID().toString(),
-                    content = answer,
-                    isUser = false
-                )
+                if (conversationHistory.size > 20) repeat(2) { conversationHistory.removeAt(0) }
 
                 _uiState.update {
                     it.copy(
-                        messages = it.messages.filter { m -> !m.isLoading } + botMessage,
+                        messages = it.messages.filter { m -> !m.isLoading } +
+                            ChatMessage(id = UUID.randomUUID().toString(), content = answer, isUser = false),
                         isLoading = false
                     )
                 }
             }.onFailure { error ->
-                val errorMessage = when {
-                    error.message?.contains("401") == true -> "מפתח API לא תקין (401)"
+                val msg = when {
+                    error.message?.contains("401") == true ->
+                        "מפתח API לא תקין (401) — עדכן אותו בפרופיל שלך"
                     error.message?.contains("400") == true -> "שגיאה בבקשה לשרת (400)"
-                    error.message?.contains("429") == true -> "חריגה ממגבלת בקשות - נסה שוב בעוד רגע"
+                    error.message?.contains("429") == true -> "חריגה ממגבלת בקשות — נסה שוב בעוד רגע"
                     error.message?.contains("network") == true ||
-                    error.message?.contains("timeout") == true -> "שגיאת רשת - בדוק חיבור לאינטרנט"
+                    error.message?.contains("timeout") == true -> "שגיאת רשת — בדוק חיבור לאינטרנט"
                     else -> "שגיאה: ${error.message}"
                 }
                 _uiState.update {
-                    it.copy(
-                        messages = it.messages.filter { m -> !m.isLoading },
-                        isLoading = false,
-                        error = errorMessage
-                    )
+                    it.copy(messages = it.messages.filter { m -> !m.isLoading }, isLoading = false, error = msg)
                 }
             }
         }

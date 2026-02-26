@@ -23,6 +23,7 @@ import com.jewish.calendar.ui.screens.auth.RegisterScreen
 import com.jewish.calendar.ui.screens.bot.HalachicBotScreen
 import com.jewish.calendar.ui.screens.calendar.CalendarScreen
 import com.jewish.calendar.ui.screens.mikveh.MikvehScreen
+import com.jewish.calendar.ui.screens.profile.ProfileScreen
 import com.jewish.calendar.ui.screens.zmanim.ZmanimScreen
 import com.jewish.calendar.viewmodel.AuthViewModel
 
@@ -33,42 +34,17 @@ sealed class Screen(
     val unselectedIcon: ImageVector,
     val femaleOnly: Boolean = false
 ) {
-    object Calendar : Screen(
-        route = "calendar",
-        labelHebrew = "לוח שנה",
-        selectedIcon = Icons.Filled.CalendarMonth,
-        unselectedIcon = Icons.Outlined.CalendarMonth
-    )
-    object Zmanim : Screen(
-        route = "zmanim",
-        labelHebrew = "זמנים",
-        selectedIcon = Icons.Filled.Schedule,
-        unselectedIcon = Icons.Outlined.Schedule
-    )
-    object Mikveh : Screen(
-        route = "mikveh",
-        labelHebrew = "טהרה",
-        selectedIcon = Icons.Filled.Water,
-        unselectedIcon = Icons.Outlined.Water,
-        femaleOnly = true
-    )
-    object Bot : Screen(
-        route = "bot",
-        labelHebrew = "שאל רב",
-        selectedIcon = Icons.Filled.Forum,
-        unselectedIcon = Icons.Outlined.Forum
-    )
+    object Calendar : Screen("calendar", "לוח שנה", Icons.Filled.CalendarMonth, Icons.Outlined.CalendarMonth)
+    object Zmanim   : Screen("zmanim",   "זמנים",   Icons.Filled.Schedule,      Icons.Outlined.Schedule)
+    object Mikveh   : Screen("mikveh",   "טהרה",    Icons.Filled.Water,         Icons.Outlined.Water,   femaleOnly = true)
+    object Bot      : Screen("bot",      "שאל רב",  Icons.Filled.Forum,         Icons.Outlined.Forum)
+    object Profile  : Screen("profile",  "פרופיל",  Icons.Filled.AccountCircle, Icons.Outlined.AccountCircle)
 }
 
-private const val ROUTE_LOGIN = "login"
+private const val ROUTE_LOGIN    = "login"
 private const val ROUTE_REGISTER = "register"
 
-val bottomNavItems = listOf(
-    Screen.Calendar,
-    Screen.Zmanim,
-    Screen.Mikveh,
-    Screen.Bot
-)
+val bottomNavItems = listOf(Screen.Calendar, Screen.Zmanim, Screen.Mikveh, Screen.Bot, Screen.Profile)
 
 @Composable
 fun AppNavigation() {
@@ -76,34 +52,25 @@ fun AppNavigation() {
     val authState by authViewModel.uiState.collectAsState()
 
     when {
-        authState.isLoading -> {
-            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
-            }
+        authState.isLoading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            CircularProgressIndicator()
         }
-        !authState.isLoggedIn -> {
-            AuthNavigation(authViewModel)
-        }
-        else -> {
-            MainNavigation(
-                authViewModel = authViewModel,
-                isFemale = authState.currentUser?.isFemale == true
-            )
-        }
+        !authState.isLoggedIn -> AuthNavigation(authViewModel)
+        else -> MainNavigation(
+            authViewModel = authViewModel,
+            isFemale = authState.currentUser?.isFemale == true
+        )
     }
 }
 
 @Composable
 private fun AuthNavigation(authViewModel: AuthViewModel) {
     val navController = rememberNavController()
-
     NavHost(navController = navController, startDestination = ROUTE_LOGIN) {
         composable(ROUTE_LOGIN) {
             LoginScreen(
                 authViewModel = authViewModel,
-                onNavigateToRegister = {
-                    navController.navigate(ROUTE_REGISTER) { launchSingleTop = true }
-                }
+                onNavigateToRegister = { navController.navigate(ROUTE_REGISTER) { launchSingleTop = true } }
             )
         }
         composable(ROUTE_REGISTER) {
@@ -116,16 +83,13 @@ private fun AuthNavigation(authViewModel: AuthViewModel) {
 }
 
 @Composable
-private fun MainNavigation(
-    authViewModel: AuthViewModel,
-    isFemale: Boolean
-) {
+private fun MainNavigation(authViewModel: AuthViewModel, isFemale: Boolean) {
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
-    // Tabs visible to everyone; Tahara only for women
     val visibleItems = bottomNavItems.filter { !it.femaleOnly || isFemale }
+    val onSignOut = { authViewModel.signOut() }
 
     Scaffold(
         bottomBar = {
@@ -140,17 +104,13 @@ private fun MainNavigation(
                             )
                         },
                         label = {
-                            Text(
-                                text = screen.labelHebrew,
-                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
-                            )
+                            Text(screen.labelHebrew,
+                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal)
                         },
                         selected = isSelected,
                         onClick = {
                             navController.navigate(screen.route) {
-                                popUpTo(navController.graph.findStartDestination().id) {
-                                    saveState = true
-                                }
+                                popUpTo(navController.graph.findStartDestination().id) { saveState = true }
                                 launchSingleTop = true
                                 restoreState = true
                             }
@@ -166,13 +126,17 @@ private fun MainNavigation(
             modifier = Modifier.padding(innerPadding)
         ) {
             composable(Screen.Calendar.route) { CalendarScreen() }
-            composable(Screen.Zmanim.route) { ZmanimScreen() }
+            composable(Screen.Zmanim.route)   { ZmanimScreen() }
             if (isFemale) {
                 composable(Screen.Mikveh.route) { MikvehScreen() }
             }
             composable(Screen.Bot.route) {
-                HalachicBotScreen(
-                    onSignOut = { authViewModel.signOut() }
+                HalachicBotScreen(onSignOut = onSignOut)
+            }
+            composable(Screen.Profile.route) {
+                ProfileScreen(
+                    onSignOut = onSignOut,
+                    onProfileSaved = { authViewModel.refreshUser() }
                 )
             }
         }

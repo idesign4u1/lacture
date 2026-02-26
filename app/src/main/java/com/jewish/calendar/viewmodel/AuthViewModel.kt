@@ -70,5 +70,12 @@ class AuthViewModel @Inject constructor(
         _uiState.update { AuthUiState() }
     }
 
+    fun refreshUser() {
+        viewModelScope.launch {
+            val user = authRepository.fetchUserProfile()
+            if (user != null) _uiState.update { it.copy(currentUser = user) }
+        }
+    }
+
     fun dismissError() = _uiState.update { it.copy(error = null) }
 }

@@ -1,5 +1,6 @@
 package com.jewish.calendar.data
 
+import com.google.firebase.auth.EmailAuthProvider
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.jewish.calendar.model.UserModel
@@ -42,11 +43,50 @@ class AuthRepository @Inject constructor() {
                     "uid" to uid,
                     "displayName" to displayName,
                     "email" to email,
-                    "gender" to gender
+                    "gender" to gender,
+                    "birthDate" to "",
+                    "maritalStatus" to ""
                 )
             ).await()
 
             Result.success(userModel)
+        } catch (e: Exception) {
+            Result.failure(mapAuthException(e))
+        }
+    }
+
+    suspend fun updateProfile(
+        displayName: String,
+        gender: String,
+        birthDate: String,
+        maritalStatus: String
+    ): Result<UserModel> {
+        return try {
+            val uid = auth.currentUser?.uid ?: return Result.failure(Exception("משתמש לא מחובר"))
+            db.collection("users").document(uid).update(
+                mapOf(
+                    "displayName" to displayName,
+                    "gender" to gender,
+                    "birthDate" to birthDate,
+                    "maritalStatus" to maritalStatus
+                )
+            ).await()
+            val updated = fetchUserProfile() ?: return Result.failure(Exception("שגיאה בטעינת הפרופיל"))
+            Result.success(updated)
+        } catch (e: Exception) {
+            Result.failure(Exception("שגיאה בשמירת הפרופיל: ${e.message}"))
+        }
+    }
+
+    suspend fun changePassword(currentPassword: String, newPassword: String): Result<Unit> {
+        return try {
+            val user = auth.currentUser ?: return Result.failure(Exception("משתמש לא מחובר"))
+            val email = user.email ?: return Result.failure(Exception("אימייל לא ידוע"))
+            // Re-authenticate before changing password
+            val credential = EmailAuthProvider.getCredential(email, currentPassword)
+            user.reauthenticate(credential).await()
+            user.updatePassword(newPassword).await()
+            Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(mapAuthException(e))
         }
@@ -61,7 +101,9 @@ class AuthRepository @Inject constructor() {
                     uid = uid,
                     displayName = doc.getString("displayName") ?: "",
                     email = doc.getString("email") ?: "",
-                    gender = doc.getString("gender") ?: ""
+                    gender = doc.getString("gender") ?: "",
+                    birthDate = doc.getString("birthDate") ?: "",
+                    maritalStatus = doc.getString("maritalStatus") ?: ""
                 )
             } else null
         } catch (e: Exception) {
@@ -83,9 +125,11 @@ class AuthRepository @Inject constructor() {
             msg.contains("EMAIL_ALREADY_IN_USE") || msg.contains("email-already-in-use") ->
                 Exception("כתובת האימייל כבר בשימוש")
             msg.contains("WEAK_PASSWORD") || msg.contains("weak-password") ->
-                Exception("הסיסמה חלשה מדי - לפחות 6 תווים")
+                Exception("הסיסמה חלשה מדי — לפחות 6 תווים")
             msg.contains("NETWORK_ERROR") || msg.contains("network") ->
-                Exception("שגיאת רשת - בדוק חיבור לאינטרנט")
+                Exception("שגיאת רשת — בדוק חיבור לאינטרנט")
+            msg.contains("REQUIRES_RECENT_LOGIN") || msg.contains("requires-recent-login") ->
+                Exception("נדרשת כניסה מחדש לפני שינוי סיסמה")
             else -> Exception("שגיאה: $msg")
         }
     }
