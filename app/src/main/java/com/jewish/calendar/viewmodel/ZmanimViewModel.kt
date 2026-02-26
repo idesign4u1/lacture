@@ -37,11 +37,11 @@ class ZmanimViewModel @Inject constructor(
         }
     }
 
-    fun onLocationGranted(location: Location) {
+    fun onLocationGranted(location: Location, cityName: String = "מיקומי הנוכחי") {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, hasLocationPermission = true) }
             try {
-                val zmanim = zmanimRepository.calculateZmanim(Date(), location)
+                val zmanim = zmanimRepository.calculateZmanim(Date(), location, cityName)
                 _uiState.update { it.copy(zmanim = zmanim, isLoading = false) }
             } catch (e: Exception) {
                 _uiState.update {
@@ -55,8 +55,8 @@ class ZmanimViewModel @Inject constructor(
         _uiState.update { it.copy(hasLocationPermission = false) }
     }
 
-    fun refreshZmanim(location: Location? = null) {
-        if (location != null) onLocationGranted(location)
+    fun refreshZmanim(location: Location? = null, cityName: String = "מיקומי הנוכחי") {
+        if (location != null) onLocationGranted(location, cityName)
         else loadDefaultZmanim()
     }
 }

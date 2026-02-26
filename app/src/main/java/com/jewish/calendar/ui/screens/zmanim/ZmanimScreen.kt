@@ -2,6 +2,7 @@ package com.jewish.calendar.ui.screens.zmanim
 
 import android.annotation.SuppressLint
 import android.Manifest
+import android.location.Geocoder
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -23,29 +24,58 @@ import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.rememberPermissionState
 import com.google.accompanist.permissions.isGranted
 import com.google.android.gms.location.LocationServices
+import com.jewish.calendar.data.StudyItem
 import com.jewish.calendar.model.ZmanimModel
 import com.jewish.calendar.ui.theme.*
+import com.jewish.calendar.viewmodel.DailyStudyUiState
+import com.jewish.calendar.viewmodel.DailyStudyViewModel
 import com.jewish.calendar.viewmodel.ZmanimViewModel
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.*
+
+// ── Resolve city name via reverse geocoding ───────────────────────────
+
+private suspend fun resolveCityName(
+    context: android.content.Context,
+    location: android.location.Location
+): String = withContext(Dispatchers.IO) {
+    try {
+        Geocoder(context, Locale("he"))
+            .getFromLocation(location.latitude, location.longitude, 1)
+            ?.firstOrNull()
+            ?.let { addr -> addr.locality ?: addr.subAdminArea ?: addr.adminArea }
+            ?: "מיקומי הנוכחי"
+    } catch (_: Exception) { "מיקומי הנוכחי" }
+}
 
 @SuppressLint("MissingPermission")
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalPermissionsApi::class)
 @Composable
 fun ZmanimScreen(
-    viewModel: ZmanimViewModel = hiltViewModel()
+    viewModel: ZmanimViewModel = hiltViewModel(),
+    dailyStudyViewModel: DailyStudyViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val studyState by dailyStudyViewModel.uiState.collectAsState()
     val locationPermission = rememberPermissionState(Manifest.permission.ACCESS_FINE_LOCATION)
     val context = LocalContext.current
     val fusedLocationClient = remember { LocationServices.getFusedLocationProviderClient(context) }
+    val scope = rememberCoroutineScope()
 
     // Auto-load real GPS location whenever permission status changes to granted
     LaunchedEffect(locationPermission.status.isGranted) {
         if (locationPermission.status.isGranted) {
-            fusedLocationClient.lastLocation.addOnSuccessListener { location ->
-                location?.let { viewModel.onLocationGranted(it) }
-            }
+            try {
+                val location = fusedLocationClient.lastLocation.await()
+                if (location != null) {
+                    val cityName = resolveCityName(context, location)
+                    viewModel.onLocationGranted(location, cityName)
+                }
+            } catch (_: Exception) { /* use default Jerusalem zmanim */ }
         } else {
             viewModel.onLocationDenied()
         }
@@ -64,9 +94,18 @@ fun ZmanimScreen(
                 actions = {
                     IconButton(onClick = {
                         if (locationPermission.status.isGranted) {
-                            fusedLocationClient.lastLocation.addOnSuccessListener { location ->
-                                if (location != null) viewModel.onLocationGranted(location)
-                                else viewModel.refreshZmanim()
+                            scope.launch {
+                                try {
+                                    val location = fusedLocationClient.lastLocation.await()
+                                    if (location != null) {
+                                        val cityName = resolveCityName(context, location)
+                                        viewModel.onLocationGranted(location, cityName)
+                                    } else {
+                                        viewModel.refreshZmanim()
+                                    }
+                                } catch (_: Exception) {
+                                    viewModel.refreshZmanim()
+                                }
                             }
                         } else {
                             viewModel.refreshZmanim()
@@ -135,6 +174,13 @@ fun ZmanimScreen(
                         items = buildEveningZmanim(zmanim)
                     )
 
+                    // ── Daily study section ───────────────────────────
+                    DailyStudySection(
+                        state = studyState,
+                        onItemClick = { dailyStudyViewModel.openItem(it) },
+                        onDialogDismiss = { dailyStudyViewModel.closeDialog() }
+                    )
+
                     if (!locationPermission.status.isGranted) {
                         LocationNote { locationPermission.launchPermissionRequest() }
                     }
@@ -147,6 +193,184 @@ fun ZmanimScreen(
         }
     }
 }
+
+// ── Daily Study Section ───────────────────────────────────────────────
+
+@Composable
+private fun DailyStudySection(
+    state: DailyStudyUiState,
+    onItemClick: (StudyItem) -> Unit,
+    onDialogDismiss: () -> Unit
+) {
+    Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(vertical = 4.dp)
+        ) {
+            Icon(
+                Icons.Default.MenuBook,
+                contentDescription = null,
+                tint = ShabbatBlue,
+                modifier = Modifier.size(20.dp)
+            )
+            Spacer(Modifier.width(8.dp))
+            Text(
+                "לימוד יומי",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = ShabbatBlue
+            )
+        }
+
+        when {
+            state.isLoading -> {
+                Box(Modifier.fillMaxWidth().padding(vertical = 12.dp), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(Modifier.size(24.dp), strokeWidth = 2.dp)
+                }
+            }
+            state.error != null -> {
+                Text(
+                    state.error,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.fillMaxWidth().padding(4.dp),
+                    textAlign = TextAlign.End
+                )
+            }
+            state.items.isEmpty() -> {
+                Text(
+                    "לא נמצאו פריטי לימוד",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.fillMaxWidth().padding(4.dp),
+                    textAlign = TextAlign.End
+                )
+            }
+            else -> {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+                ) {
+                    Column {
+                        state.items.forEachIndexed { idx, item ->
+                            StudyItemRow(item = item, onClick = { onItemClick(item) })
+                            if (idx < state.items.lastIndex) {
+                                Divider(modifier = Modifier.padding(horizontal = 16.dp))
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Dialog for selected item
+    state.selectedItem?.let { item ->
+        StudyTextDialog(
+            item = item,
+            text = state.selectedText,
+            isLoading = state.isLoadingText,
+            onDismiss = onDialogDismiss
+        )
+    }
+}
+
+@Composable
+private fun StudyItemRow(item: StudyItem, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            Icons.Default.ChevronLeft,
+            contentDescription = null,
+            tint = ShabbatBlue,
+            modifier = Modifier.size(18.dp)
+        )
+        Column(horizontalAlignment = Alignment.End, modifier = Modifier.weight(1f)) {
+            Text(
+                text = item.titleHe,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface,
+                textAlign = TextAlign.End
+            )
+            if (item.subtitleHe.isNotBlank()) {
+                Text(
+                    text = item.subtitleHe,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.End
+                )
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun StudyTextDialog(
+    item: StudyItem,
+    text: String?,
+    isLoading: Boolean,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Column {
+                Text(
+                    item.titleHe,
+                    fontWeight = FontWeight.Bold,
+                    textAlign = TextAlign.End,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                if (item.subtitleHe.isNotBlank()) {
+                    Text(
+                        item.subtitleHe,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.End,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            }
+        },
+        text = {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 100.dp, max = 400.dp)
+            ) {
+                if (isLoading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.align(Alignment.Center).size(32.dp)
+                    )
+                } else {
+                    Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                        Text(
+                            text = text ?: "לא נמצא תוכן",
+                            style = MaterialTheme.typography.bodyMedium,
+                            textAlign = TextAlign.End,
+                            lineHeight = 28.sp,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) { Text("סגור") }
+        }
+    )
+}
+
+// ── Existing composables ──────────────────────────────────────────────
 
 @Composable
 private fun LocationHeader(zmanim: ZmanimModel) {

@@ -3,6 +3,7 @@ package com.jewish.calendar.di
 import android.content.Context
 import androidx.room.Room
 import com.jewish.calendar.data.*
+import com.jewish.calendar.data.SefariaRepository
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -53,6 +54,10 @@ object AppModule {
     @Provides
     @Singleton
     fun provideClaudeRepository(): ClaudeRepository = ClaudeRepository()
+
+    @Provides
+    @Singleton
+    fun provideSefariaRepository(): SefariaRepository = SefariaRepository()
 
     @Provides
     @Singleton
