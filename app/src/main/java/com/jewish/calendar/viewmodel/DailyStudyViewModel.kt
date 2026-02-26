@@ -7,6 +7,7 @@ import com.jewish.calendar.data.StudyItem
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import java.util.Date
 import javax.inject.Inject
 
 data class DailyStudyUiState(
@@ -33,6 +34,19 @@ class DailyStudyViewModel @Inject constructor(
     private fun loadStudy() {
         viewModelScope.launch {
             sefariaRepository.getDailyStudy()
+                .onSuccess { items ->
+                    _uiState.update { it.copy(items = items, isLoading = false) }
+                }
+                .onFailure {
+                    _uiState.update { it.copy(isLoading = false, error = "לא ניתן לטעון לימוד יומי") }
+                }
+        }
+    }
+
+    fun loadStudyForDate(date: Date) {
+        _uiState.update { it.copy(isLoading = true, items = emptyList(), error = null) }
+        viewModelScope.launch {
+            sefariaRepository.getDailyStudy(date)
                 .onSuccess { items ->
                     _uiState.update { it.copy(items = items, isLoading = false) }
                 }

@@ -21,17 +21,27 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.jewish.calendar.data.CalendarEvent
 import com.jewish.calendar.model.HebrewDateModel
+import com.jewish.calendar.ui.screens.common.DailyStudySection
 import com.jewish.calendar.ui.theme.*
 import com.jewish.calendar.viewmodel.CalendarViewModel
+import com.jewish.calendar.viewmodel.DailyStudyUiState
+import com.jewish.calendar.viewmodel.DailyStudyViewModel
 import java.text.SimpleDateFormat
 import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CalendarScreen(
-    viewModel: CalendarViewModel = hiltViewModel()
+    viewModel: CalendarViewModel = hiltViewModel(),
+    dailyStudyViewModel: DailyStudyViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val studyState by dailyStudyViewModel.uiState.collectAsState()
+
+    // Reload study items whenever selected date changes
+    LaunchedEffect(uiState.selectedDate) {
+        uiState.selectedDate?.let { dailyStudyViewModel.loadStudyForDate(it.gregorianDate) }
+    }
 
     Scaffold(
         topBar = {
@@ -88,6 +98,9 @@ fun CalendarScreen(
                     SelectedDayDetails(
                         dateModel = selected,
                         events = uiState.selectedDayEvents,
+                        studyState = studyState,
+                        onStudyItemClick = { dailyStudyViewModel.openItem(it) },
+                        onStudyDialogDismiss = { dailyStudyViewModel.closeDialog() },
                         viewModel = viewModel
                     )
                 }
@@ -197,9 +210,6 @@ private fun TodayHebrewHeader(
                     // Show Rosh Chodesh badge only when holidayName doesn't already include it
                     if (today.isRoshChodesh && today.holidayName == null) {
                         HolidayBadge("ראש חודש", OmerGreen)
-                    }
-                    today.additionalEvents.firstOrNull { it.startsWith("יארצייט") }?.let {
-                        HolidayBadge(it.removePrefix("יארצייט: "), FastDayGray)
                     }
                 }
             }
@@ -377,6 +387,9 @@ private fun DayCell(
 private fun SelectedDayDetails(
     dateModel: HebrewDateModel,
     events: List<CalendarEvent>,
+    studyState: DailyStudyUiState,
+    onStudyItemClick: (com.jewish.calendar.data.StudyItem) -> Unit,
+    onStudyDialogDismiss: () -> Unit,
     viewModel: CalendarViewModel
 ) {
     val cal = Calendar.getInstance().apply { time = dateModel.gregorianDate }
@@ -461,6 +474,15 @@ private fun SelectedDayDetails(
                 EventItem(event = event, onDelete = { viewModel.deleteEvent(event) })
             }
         }
+
+        // Daily study section
+        Spacer(modifier = Modifier.height(8.dp))
+        Divider()
+        DailyStudySection(
+            state = studyState,
+            onItemClick = onStudyItemClick,
+            onDialogDismiss = onStudyDialogDismiss
+        )
     }
 }
 

@@ -49,7 +49,12 @@ data class StudyItem(
 
 interface SefariaApiService {
     @GET("api/calendars")
-    suspend fun getCalendars(): SefariaCalendarsResponse
+    suspend fun getCalendars(
+        @Query("timezone") timezone: String = "Asia/Jerusalem",
+        @Query("year") year: Int? = null,
+        @Query("month") month: Int? = null,
+        @Query("day") day: Int? = null
+    ): SefariaCalendarsResponse
 
     @GET("api/texts/{ref}")
     suspend fun getText(
@@ -91,8 +96,12 @@ class SefariaRepository @Inject constructor() {
         "Shemirat"        to "שמירת הלשון"
     )
 
-    suspend fun getDailyStudy(): Result<List<StudyItem>> = try {
-        val items = api.getCalendars().calendarItems.mapNotNull { item ->
+    suspend fun getDailyStudy(date: java.util.Date? = null): Result<List<StudyItem>> = try {
+        val cal = date?.let { java.util.Calendar.getInstance().apply { time = it } }
+        val year  = cal?.get(java.util.Calendar.YEAR)
+        val month = cal?.let { it.get(java.util.Calendar.MONTH) + 1 }  // Calendar months are 0-based
+        val day   = cal?.get(java.util.Calendar.DAY_OF_MONTH)
+        val items = api.getCalendars(year = year, month = month, day = day).calendarItems.mapNotNull { item ->
             val match = studyKeywords.firstOrNull { (key, _) ->
                 item.title.en.contains(key, ignoreCase = true)
             }
