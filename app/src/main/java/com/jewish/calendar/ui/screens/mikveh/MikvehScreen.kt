@@ -5,6 +5,7 @@ import android.net.Uri
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -518,57 +519,245 @@ private fun ActionButtonsRow(
     }
 }
 
-// --- Mikveh Map Tab (replaced with Google Maps link) ---
+// ── Accessible Mikveh Data ─────────────────────────────────────────────
+
+private data class AccessibleMikveh(
+    val city: String,
+    val address: String,   // mikveh name / street
+    val contact: String,   // contact name + phone(s)
+    val region: String
+)
+
+private val MIKVEH_REGIONS = listOf(
+    "הכל", "צפון", "חיפה", "שרון", "גוש דן", "ירושלים", "שפלה ודרום", "שומרון"
+)
+
+private val ACCESSIBLE_MIKVEHS = listOf(
+    // ── צפון ──────────────────────────────────────────────────────────────
+    AccessibleMikveh("בית שאן",       "אחד העם 7",                    "סמדר: 04-6587480",                              "צפון"),
+    AccessibleMikveh("גליל תחתון",    "מצפה נטופה",                   "דנה: 052-4531484",                              "צפון"),
+    AccessibleMikveh("עכו",           "הכרם",                         "רמונד: 04-9917554",                             "צפון"),
+    AccessibleMikveh("עכו",           "גבעת התמרים",                  "מרים: 04-9913493",                              "צפון"),
+    AccessibleMikveh("עמק יזרעאל",    "תל עדשים",                     "גאולה: 058-7977081",                            "צפון"),
+    AccessibleMikveh("עפולה",         "גבעת המורה",                   "שושנה: 054-6212270",                            "צפון"),
+    AccessibleMikveh("עפולה",         "מעלות (בשיפוצים)",             "רות: 050-6314170",                              "צפון"),
+    AccessibleMikveh("צפת",           "ברסלב (פרטי)",                 "יפה: 054-8457552, 077-7877848",                 "צפון"),
+    AccessibleMikveh("קרית שמונה",    "מקווה הורדים",                 "רחל: 058-4841815",                              "צפון"),
+    AccessibleMikveh("רמת הגולן",     "חיספין",                       "פנינה: 054-4335153",                            "צפון"),
+    // ── חיפה ──────────────────────────────────────────────────────────────
+    AccessibleMikveh("חיפה",          "רח' בצלאל — מקווה הדר",       "זהבה: 052-7137352",                             "חיפה"),
+    AccessibleMikveh("חיפה",          "רח' יד לבנים — חסדי טהרה",   "חנה: 052-7116266",                              "חיפה"),
+    AccessibleMikveh("קרית ביאליק",   "קק\"ל 75",                     "חגית: 04-6564843",                              "חיפה"),
+    // ── שרון ──────────────────────────────────────────────────────────────
+    AccessibleMikveh("אלעד",          "אבטליון",                      "גוליה: 054-8418637",                            "שרון"),
+    AccessibleMikveh("הרצליה",        "שלמה המלך 34",                 "לימור: 09-8352246",                             "שרון"),
+    AccessibleMikveh("חדרה",          "לבוצ'קין 9",                   "נחמה: 04-6323660",                              "שרון"),
+    AccessibleMikveh("מודיעין",       "בוכמן",                        "פרחיה: 054-8590407",                            "שרון"),
+    AccessibleMikveh("נתניה",         "גליקסון 17 — מקווה סלע",      "רוחמה: 050-7577574, אביבה: 050-4149332",        "שרון"),
+    AccessibleMikveh("פרדס חנה",      "דרך הבנים 103",                "פנינה/איילה: 04-6373440",                       "שרון"),
+    AccessibleMikveh("ראש העין",      "הרש\"ש 23",                    "נצחיה: 054-8423737",                            "שרון"),
+    AccessibleMikveh("רמלה",          "ברמת דן",                      "עליזה: 050-4447019",                            "שרון"),
+    // ── גוש דן ────────────────────────────────────────────────────────────
+    AccessibleMikveh("בני ברק",       "שיכון ה' — בארי 7",           "מאירה: 03-5794661, מרגלית: 050-4115307",        "גוש דן"),
+    AccessibleMikveh("בת ים",         "הלפר 38",                      "דורית: 052-6551876",                            "גוש דן"),
+    AccessibleMikveh("חולון",         "רח' הרב קוק 9",               "אביטל חג'ג: 052-2954916, 050-3323806",          "גוש דן"),
+    AccessibleMikveh("סביון",         "הדרום 12",                     "שירלי: 054-2179288",                            "גוש דן"),
+    AccessibleMikveh("פתח תקוה",      "עמישב",                        "דורית: 052-6176458",                            "גוש דן"),
+    AccessibleMikveh("ראשון לציון",   "מקווה בובה — רח' קפח",        "אורלי: 03-6047934",                             "גוש דן"),
+    AccessibleMikveh("רחובות",        "כיכר החשמונאים 4",             "אסתר: 052-4312500",                             "גוש דן"),
+    AccessibleMikveh("רמת גן",        "עזריאל 24 / רמת השקמה",       "לימור: 052-6636668",                            "גוש דן"),
+    AccessibleMikveh("תל אביב",       "רמת החיל",                     "אילנה פור: 054-7708312",                        "גוש דן"),
+    AccessibleMikveh("תל אביב",       "תל כביר",                      "אלינה פור: 054-7708312",                        "גוש דן"),
+    // ── ירושלים ───────────────────────────────────────────────────────────
+    AccessibleMikveh("אפרת",          "זית שמן 34",                   "הדסה לפידות: 02-9934740",                       "ירושלים"),
+    AccessibleMikveh("בית שמש",       "בן זכאי 32",                   "מרגלית: 02-9998472",                            "ירושלים"),
+    AccessibleMikveh("בית שמש",       "רמה ג' — יואל 3",             "דבורה גרוס: 054-8410121",                       "ירושלים"),
+    AccessibleMikveh("ביתר עלית",     "קדושת הלוי",                   "לאה: 050-4117230",                              "ירושלים"),
+    AccessibleMikveh("ירושלים",       "בקעה — גדעון 7",              "אסתר: 02-6717597",                              "ירושלים"),
+    AccessibleMikveh("ירושלים",       "מורשה",                        "רבקה: 054-7070738",                             "ירושלים"),
+    // ── שפלה ודרום ────────────────────────────────────────────────────────
+    AccessibleMikveh("אילת",          "שחמון",                        "נעה: 050-4508499",                              "שפלה ודרום"),
+    AccessibleMikveh("אשדוד",         "העצמאות 39",                   "אילנה: 073-2654684",                            "שפלה ודרום"),
+    AccessibleMikveh("אשקלון",        "ברנע 7",                       "צביה עיני: 08-6781192, 052-5945588",            "שפלה ודרום"),
+    AccessibleMikveh("באר שבע",       "רח' הגאונים",                  "אושרית: 08-6431440",                            "שפלה ודרום"),
+    AccessibleMikveh("גן יבנה",       "רח' ארגמן",                    "נינט: 08-6588392",                              "שפלה ודרום"),
+    AccessibleMikveh("חוף אשקלון",    "ניצן (ח. טופס 4)",             "08-6775586",                                    "שפלה ודרום"),
+    AccessibleMikveh("לכיש",          "אליהב",                        "ענת: 052-3311131",                              "שפלה ודרום"),
+    AccessibleMikveh("מרחבים",        "שבי דרון",                     "מעיין: 054-6462719",                            "שפלה ודרום"),
+    AccessibleMikveh("נחל שורק",      "נצר חזני",                     "רחל: 054-5684669",                              "שפלה ודרום"),
+    AccessibleMikveh("נחל שורק",      "גני טל",                       "אורלי: 050-4124837",                            "שפלה ודרום"),
+    AccessibleMikveh("קרית גת",       "יפתח הגלעדי 9 — מקווה תמר",  "דינה: 08-6525490",                              "שפלה ודרום"),
+    AccessibleMikveh("קרית גת",       "רח' סטרומה 5 (חדש)",          "08-9957288",                                    "שפלה ודרום"),
+    AccessibleMikveh("רמת נגב",       "רתמים",                        "חיה: 054-3129680",                              "שפלה ודרום"),
+    AccessibleMikveh("שדות נגב",      "מעגלים",                       "יוכבד: 054-4641725",                            "שפלה ודרום"),
+    // ── שומרון ────────────────────────────────────────────────────────────
+    AccessibleMikveh("שומרון",        "ברוכין",                       "נעמה: 054-5447429",                             "שומרון"),
+)
+
+private val PHONE_REGEX = Regex("""0\d{1,2}-\d{7}""")
+
+// --- Mikveh Map Tab — Accessible Mikvehs with Region Filter ---
 
 @Composable
 private fun MikvehMapTab() {
-    val context = LocalContext.current
+    var selectedRegion by remember { mutableStateOf("הכל") }
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(24.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+    val filtered = remember(selectedRegion) {
+        if (selectedRegion == "הכל") ACCESSIBLE_MIKVEHS
+        else ACCESSIBLE_MIKVEHS.filter { it.region == selectedRegion }
+    }
+
+    Column(modifier = Modifier.fillMaxSize()) {
+
+        // ── Header ──────────────────────────────────────────────────────
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 10.dp),
+            horizontalArrangement = Arrangement.End,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Text("💧", fontSize = 56.sp)
             Text(
-                text = "חיפוש מקוואות בסביבה",
-                style = MaterialTheme.typography.headlineSmall,
+                text = "מקוואות מונגשות ♿ עם מעלון",
+                style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
-                textAlign = TextAlign.Center
+                color = PurityPurple
             )
-            Text(
-                text = "לחצי כדי לחפש מקוואות קרובות דרך Google Maps",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = TextAlign.Center
-            )
-            Spacer(Modifier.height(8.dp))
-            Button(
-                onClick = {
-                    val mapsUri = Uri.parse("geo:0,0?q=מקווה")
-                    val intent = Intent(Intent.ACTION_VIEW, mapsUri)
-                    intent.setPackage("com.google.android.apps.maps")
-                    if (intent.resolveActivity(context.packageManager) != null) {
-                        context.startActivity(intent)
-                    } else {
-                        // Fallback to browser
-                        val webIntent = Intent(
-                            Intent.ACTION_VIEW,
-                            Uri.parse("https://maps.google.com/?q=מקווה")
-                        )
-                        context.startActivity(webIntent)
-                    }
-                },
-                colors = ButtonDefaults.buttonColors(containerColor = PurityPurple)
+        }
+
+        // ── Region filter chips ──────────────────────────────────────────
+        LazyRow(
+            contentPadding = PaddingValues(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.padding(bottom = 6.dp)
+        ) {
+            items(MIKVEH_REGIONS) { region ->
+                FilterChip(
+                    selected = selectedRegion == region,
+                    onClick = { selectedRegion = region },
+                    label = { Text(region, style = MaterialTheme.typography.labelMedium) },
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = PurityPurple,
+                        selectedLabelColor = Color.White
+                    )
+                )
+            }
+        }
+
+        // ── Count line ───────────────────────────────────────────────────
+        Text(
+            text = "${filtered.size} מקוואות",
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 2.dp),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.End
+        )
+        Divider()
+
+        // ── List ─────────────────────────────────────────────────────────
+        LazyColumn(
+            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            items(filtered) { mikveh ->
+                AccessibleMikvehCard(mikveh)
+            }
+        }
+    }
+}
+
+@Composable
+private fun AccessibleMikvehCard(mikveh: AccessibleMikveh) {
+    val context = LocalContext.current
+    val firstPhone = PHONE_REGEX.find(mikveh.contact)?.value
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+    ) {
+        Column(modifier = Modifier.padding(12.dp)) {
+
+            // City + region badge row
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(Icons.Default.Place, contentDescription = null, tint = Color.White)
-                Spacer(Modifier.width(8.dp))
-                Text("פתח Google Maps", color = Color.White)
+                // Region badge (left/start in RTL = visually right)
+                Surface(
+                    color = PurityPurple.copy(alpha = 0.12f),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Text(
+                        text = mikveh.region,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = PurityPurple,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+                // City name (right/end in RTL = visually left)
+                Text(
+                    text = mikveh.city,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            }
+
+            Spacer(Modifier.height(4.dp))
+
+            // Address
+            Text(
+                text = mikveh.address,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+                textAlign = TextAlign.End,
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Spacer(Modifier.height(6.dp))
+
+            // Contact + call button
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Call button
+                if (firstPhone != null) {
+                    IconButton(
+                        onClick = {
+                            val dialUri = Uri.parse("tel:${firstPhone.replace("-", "")}")
+                            context.startActivity(Intent(Intent.ACTION_DIAL, dialUri))
+                        },
+                        modifier = Modifier
+                            .size(36.dp)
+                            .clip(CircleShape)
+                            .background(PurityPurple.copy(alpha = 0.12f))
+                    ) {
+                        Icon(
+                            Icons.Default.Phone,
+                            contentDescription = "התקשרי",
+                            tint = PurityPurple,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                }
+
+                // Contact text
+                Text(
+                    text = mikveh.contact,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.End,
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(start = 8.dp)
+                )
             }
         }
     }
