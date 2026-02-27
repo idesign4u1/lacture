@@ -1,5 +1,6 @@
 package com.jewish.calendar.ui.screens.calendar
 
+import android.content.res.Configuration
 import androidx.compose.animation.*
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
@@ -14,6 +15,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -37,8 +39,8 @@ fun CalendarScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val studyState by dailyStudyViewModel.uiState.collectAsState()
+    val isLandscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
 
-    // Reload study items whenever selected date changes
     LaunchedEffect(uiState.selectedDate) {
         uiState.selectedDate?.let { dailyStudyViewModel.loadStudyForDate(it.gregorianDate) }
     }
@@ -52,63 +54,110 @@ fun CalendarScreen(
                 onNextMonth = { viewModel.navigateMonth(true) },
                 onTodayClick = { viewModel.goToToday() }
             )
-        },
-        floatingActionButton = {
-            if (uiState.selectedDate != null) {
-                FloatingActionButton(
-                    onClick = { viewModel.showAddEventDialog() },
-                    containerColor = MaterialTheme.colorScheme.primary
-                ) {
-                    Icon(Icons.Default.Add, contentDescription = "הוסף אירוע", tint = Color.White)
-                }
-            }
         }
+        // FAB removed — "הוסף אירוע" lives inline inside the day-details panel
     ) { padding ->
-        Column(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
                 .background(MaterialTheme.colorScheme.background)
         ) {
             if (uiState.isLoading) {
-                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
+                CircularProgressIndicator(
+                    modifier = Modifier.align(Alignment.Center),
+                    color = MaterialTheme.colorScheme.primary
+                )
+            } else if (isLandscape) {
+                // ── Landscape: calendar grid | details side-by-side ──────────
+                Row(modifier = Modifier.fillMaxSize()) {
+
+                    // Calendar grid (left column in RTL = visually right)
+                    Column(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxHeight()
+                    ) {
+                        uiState.today?.let { TodayHebrewHeader(it, viewModel) }
+                        DayOfWeekHeader()
+                        CalendarGrid(
+                            days = uiState.currentMonthDays,
+                            today = uiState.today,
+                            selectedDate = uiState.selectedDate,
+                            displayYear = uiState.displayYear,
+                            displayMonth = uiState.displayMonth,
+                            onDayClick = { viewModel.selectDate(it) }
+                        )
+                    }
+
+                    // Vertical divider
+                    Box(
+                        modifier = Modifier
+                            .fillMaxHeight()
+                            .width(1.dp)
+                            .background(MaterialTheme.colorScheme.outlineVariant)
+                    )
+
+                    // Details panel (right column in RTL = visually left)
+                    Column(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxHeight()
+                    ) {
+                        uiState.selectedDate?.let { selected ->
+                            SelectedDayDetails(
+                                dateModel = selected,
+                                events = uiState.selectedDayEvents,
+                                studyState = studyState,
+                                onStudyItemClick = { dailyStudyViewModel.openItem(it) },
+                                onStudyDialogDismiss = { dailyStudyViewModel.closeDialog() },
+                                viewModel = viewModel,
+                                modifier = Modifier.weight(1f)
+                            )
+                        } ?: Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(24.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "בחר יום לצפייה בפרטים",
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                textAlign = TextAlign.Center
+                            )
+                        }
+                    }
                 }
             } else {
-                // Hebrew date header for today
-                uiState.today?.let { today ->
-                    TodayHebrewHeader(today, viewModel)
-                }
-
-                // Day of week headers
-                DayOfWeekHeader()
-
-                // Calendar grid
-                CalendarGrid(
-                    days = uiState.currentMonthDays,
-                    today = uiState.today,
-                    selectedDate = uiState.selectedDate,
-                    displayYear = uiState.displayYear,
-                    displayMonth = uiState.displayMonth,
-                    onDayClick = { viewModel.selectDate(it) }
-                )
-
-                // Selected day details
-                uiState.selectedDate?.let { selected ->
-                    SelectedDayDetails(
-                        dateModel = selected,
-                        events = uiState.selectedDayEvents,
-                        studyState = studyState,
-                        onStudyItemClick = { dailyStudyViewModel.openItem(it) },
-                        onStudyDialogDismiss = { dailyStudyViewModel.closeDialog() },
-                        viewModel = viewModel
+                // ── Portrait: stacked layout ─────────────────────────────────
+                Column(modifier = Modifier.fillMaxSize()) {
+                    uiState.today?.let { TodayHebrewHeader(it, viewModel) }
+                    DayOfWeekHeader()
+                    CalendarGrid(
+                        days = uiState.currentMonthDays,
+                        today = uiState.today,
+                        selectedDate = uiState.selectedDate,
+                        displayYear = uiState.displayYear,
+                        displayMonth = uiState.displayMonth,
+                        onDayClick = { viewModel.selectDate(it) }
                     )
+                    uiState.selectedDate?.let { selected ->
+                        SelectedDayDetails(
+                            dateModel = selected,
+                            events = uiState.selectedDayEvents,
+                            studyState = studyState,
+                            onStudyItemClick = { dailyStudyViewModel.openItem(it) },
+                            onStudyDialogDismiss = { dailyStudyViewModel.closeDialog() },
+                            viewModel = viewModel
+                        )
+                    }
                 }
             }
         }
     }
 
-    // Add event dialog
+    // Add-event dialog (shared by both orientations)
     if (uiState.showAddEventDialog) {
         uiState.selectedDate?.let { selectedDate ->
             AddEventDialog(
@@ -182,7 +231,6 @@ private fun TodayHebrewHeader(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Hebrew date
                 Column(horizontalAlignment = Alignment.End) {
                     Text(
                         text = today.hebrewDateString,
@@ -198,8 +246,6 @@ private fun TodayHebrewHeader(
                         )
                     }
                 }
-
-                // Special day badges
                 Column(horizontalAlignment = Alignment.Start) {
                     if (today.isShabbat) {
                         HolidayBadge("שבת קודש", ShabbatBlue)
@@ -207,14 +253,11 @@ private fun TodayHebrewHeader(
                     today.holidayName?.let {
                         HolidayBadge(it, if (today.isFastDay) FastDayGray else HolidayRed)
                     }
-                    // Show Rosh Chodesh badge only when holidayName doesn't already include it
                     if (today.isRoshChodesh && today.holidayName == null) {
                         HolidayBadge("ראש חודש", OmerGreen)
                     }
                 }
             }
-
-            // Omer count
             today.omerCount?.let { count ->
                 Divider(modifier = Modifier.padding(vertical = 4.dp))
                 Text(
@@ -390,17 +433,18 @@ private fun SelectedDayDetails(
     studyState: DailyStudyUiState,
     onStudyItemClick: (com.jewish.calendar.data.StudyItem) -> Unit,
     onStudyDialogDismiss: () -> Unit,
-    viewModel: CalendarViewModel
+    viewModel: CalendarViewModel,
+    modifier: Modifier = Modifier          // accepts weight(1f) in landscape
 ) {
-    val cal = Calendar.getInstance().apply { time = dateModel.gregorianDate }
     val gregFormatter = SimpleDateFormat("EEEE, d בMMMM yyyy", Locale("he"))
 
     Column(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
-            .padding(16.dp)
+            .padding(horizontal = 16.dp, vertical = 8.dp)
             .verticalScroll(rememberScrollState())
     ) {
+        // ── Date header ───────────────────────────────────────────────────
         Text(
             text = gregFormatter.format(dateModel.gregorianDate),
             style = MaterialTheme.typography.bodyMedium,
@@ -413,9 +457,28 @@ private fun SelectedDayDetails(
             color = MaterialTheme.colorScheme.onSurface
         )
 
+        Spacer(modifier = Modifier.height(10.dp))
+
+        // ── Inline "הוסף אירוע" — replaces the floating "+" button ───────
+        // Tonal button: visible but not obstructive; always reachable in the panel
+        FilledTonalButton(
+            onClick = { viewModel.showAddEventDialog() },
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp),
+            contentPadding = PaddingValues(vertical = 10.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Default.Add,
+                contentDescription = null,
+                modifier = Modifier.size(18.dp)
+            )
+            Spacer(Modifier.width(6.dp))
+            Text("הוסף אירוע", style = MaterialTheme.typography.labelLarge)
+        }
+
         Spacer(modifier = Modifier.height(8.dp))
 
-        // Special day info
+        // ── Special day info ──────────────────────────────────────────────
         if (dateModel.isShabbat) {
             InfoChip("שבת קודש", Icons.Default.Star, ShabbatBlue)
         }
@@ -435,7 +498,6 @@ private fun SelectedDayDetails(
         dateModel.omerCount?.let { count ->
             InfoChip(viewModel.getOmerText(count), Icons.Default.Grain, OmerGreen)
         }
-        // Yahrzeits and special events
         dateModel.additionalEvents.forEach { event ->
             val isYahrzeit = event.startsWith("יארצייט")
             InfoChip(
@@ -445,7 +507,7 @@ private fun SelectedDayDetails(
             )
         }
 
-        // Events section
+        // ── Events list ───────────────────────────────────────────────────
         if (events.isNotEmpty()) {
             Spacer(modifier = Modifier.height(12.dp))
             Divider()
@@ -475,7 +537,7 @@ private fun SelectedDayDetails(
             }
         }
 
-        // Daily study section
+        // ── Daily study ───────────────────────────────────────────────────
         Spacer(modifier = Modifier.height(8.dp))
         Divider()
         DailyStudySection(

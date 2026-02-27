@@ -1,6 +1,8 @@
 package com.jewish.calendar.ui.navigation
 
+import android.content.res.Configuration
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
@@ -11,6 +13,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontWeight
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -87,43 +90,25 @@ private fun MainNavigation(authViewModel: AuthViewModel, isFemale: Boolean) {
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
+    val isLandscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
 
     val visibleItems = bottomNavItems.filter { !it.femaleOnly || isFemale }
     val onSignOut = { authViewModel.signOut() }
 
-    Scaffold(
-        bottomBar = {
-            NavigationBar {
-                visibleItems.forEach { screen ->
-                    val isSelected = currentRoute == screen.route
-                    NavigationBarItem(
-                        icon = {
-                            Icon(
-                                imageVector = if (isSelected) screen.selectedIcon else screen.unselectedIcon,
-                                contentDescription = screen.labelHebrew
-                            )
-                        },
-                        label = {
-                            Text(screen.labelHebrew,
-                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal)
-                        },
-                        selected = isSelected,
-                        onClick = {
-                            navController.navigate(screen.route) {
-                                popUpTo(navController.graph.findStartDestination().id) { saveState = true }
-                                launchSingleTop = true
-                                restoreState = true
-                            }
-                        }
-                    )
-                }
-            }
+    val onNavItemClick: (String) -> Unit = { route ->
+        navController.navigate(route) {
+            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+            launchSingleTop = true
+            restoreState = true
         }
-    ) { innerPadding ->
+    }
+
+    // Shared NavHost — used in both portrait (Scaffold) and landscape (Row) layouts
+    val navHostContent: @Composable (Modifier) -> Unit = { modifier ->
         NavHost(
             navController = navController,
             startDestination = Screen.Calendar.route,
-            modifier = Modifier.padding(innerPadding)
+            modifier = modifier
         ) {
             composable(Screen.Calendar.route) { CalendarScreen() }
             composable(Screen.Zmanim.route)   { ZmanimScreen() }
@@ -139,6 +124,63 @@ private fun MainNavigation(authViewModel: AuthViewModel, isFemale: Boolean) {
                     onProfileSaved = { authViewModel.refreshUser() }
                 )
             }
+        }
+    }
+
+    if (isLandscape) {
+        // Landscape: NavigationRail on the side instead of bottom bar
+        Row(modifier = Modifier.fillMaxSize()) {
+            NavigationRail {
+                visibleItems.forEach { screen ->
+                    val isSelected = currentRoute == screen.route
+                    NavigationRailItem(
+                        icon = {
+                            Icon(
+                                imageVector = if (isSelected) screen.selectedIcon else screen.unselectedIcon,
+                                contentDescription = screen.labelHebrew
+                            )
+                        },
+                        label = {
+                            Text(
+                                screen.labelHebrew,
+                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                            )
+                        },
+                        selected = isSelected,
+                        onClick = { onNavItemClick(screen.route) }
+                    )
+                }
+            }
+            navHostContent(Modifier.weight(1f).fillMaxSize())
+        }
+    } else {
+        // Portrait: bottom NavigationBar inside Scaffold
+        Scaffold(
+            bottomBar = {
+                NavigationBar {
+                    visibleItems.forEach { screen ->
+                        val isSelected = currentRoute == screen.route
+                        NavigationBarItem(
+                            icon = {
+                                Icon(
+                                    imageVector = if (isSelected) screen.selectedIcon else screen.unselectedIcon,
+                                    contentDescription = screen.labelHebrew
+                                )
+                            },
+                            label = {
+                                Text(
+                                    screen.labelHebrew,
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                                )
+                            },
+                            selected = isSelected,
+                            onClick = { onNavItemClick(screen.route) }
+                        )
+                    }
+                }
+            }
+        ) { innerPadding ->
+            navHostContent(Modifier.padding(innerPadding))
         }
     }
 }
