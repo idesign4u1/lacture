@@ -45,6 +45,10 @@ object AppModule {
 
     @Provides
     @Singleton
+    fun provideZmanimAlarmDao(db: AppDatabase): ZmanimAlarmDao = db.zmanimAlarmDao()
+
+    @Provides
+    @Singleton
     fun provideHebrewCalendarRepository(): HebrewCalendarRepository = HebrewCalendarRepository()
 
     @Provides
