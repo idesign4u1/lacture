@@ -28,6 +28,7 @@ import com.google.accompanist.permissions.rememberMultiplePermissionsState
 import com.jewish.calendar.ui.screens.auth.LoginScreen
 import com.jewish.calendar.ui.screens.auth.RegisterScreen
 import com.jewish.calendar.ui.screens.bot.HalachicBotScreen
+import com.jewish.calendar.ui.screens.tools.ToolsScreen
 import com.jewish.calendar.ui.screens.calendar.CalendarScreen
 import com.jewish.calendar.ui.screens.mikveh.MikvehScreen
 import com.jewish.calendar.ui.screens.profile.ProfileScreen
@@ -41,17 +42,18 @@ sealed class Screen(
     val unselectedIcon: ImageVector,
     val femaleOnly: Boolean = false
 ) {
-    object Calendar : Screen("calendar", "לוח שנה", Icons.Filled.CalendarMonth, Icons.Outlined.CalendarMonth)
-    object Zmanim   : Screen("zmanim",   "זמנים",   Icons.Filled.Schedule,      Icons.Outlined.Schedule)
-    object Mikveh   : Screen("mikveh",   "טהרה",    Icons.Filled.Water,         Icons.Outlined.Water,   femaleOnly = true)
-    object Bot      : Screen("bot",      "שאל רב",  Icons.Filled.Forum,         Icons.Outlined.Forum)
-    object Profile  : Screen("profile",  "פרופיל",  Icons.Filled.AccountCircle, Icons.Outlined.AccountCircle)
+    object Calendar : Screen("calendar", "לוח שנה",    Icons.Filled.CalendarMonth, Icons.Outlined.CalendarMonth)
+    object Zmanim   : Screen("zmanim",   "זמנים",      Icons.Filled.Schedule,      Icons.Outlined.Schedule)
+    object Mikveh   : Screen("mikveh",   "טהרה",       Icons.Filled.Water,         Icons.Outlined.Water,         femaleOnly = true)
+    object Bot      : Screen("bot",      "שאל רב",     Icons.Filled.Forum,         Icons.Outlined.Forum)
+    object Tools    : Screen("tools",    "כלים",       Icons.Filled.Handyman,      Icons.Outlined.Handyman)
+    object Profile  : Screen("profile",  "פרופיל",    Icons.Filled.AccountCircle, Icons.Outlined.AccountCircle)
 }
 
 private const val ROUTE_LOGIN    = "login"
 private const val ROUTE_REGISTER = "register"
 
-val bottomNavItems = listOf(Screen.Calendar, Screen.Zmanim, Screen.Mikveh, Screen.Bot, Screen.Profile)
+val bottomNavItems = listOf(Screen.Calendar, Screen.Zmanim, Screen.Mikveh, Screen.Bot, Screen.Tools, Screen.Profile)
 
 @Composable
 fun AppNavigation() {
@@ -135,6 +137,7 @@ private fun MainNavigation(authViewModel: AuthViewModel, isFemale: Boolean) {
             composable(Screen.Bot.route) {
                 HalachicBotScreen(onSignOut = onSignOut)
             }
+            composable(Screen.Tools.route) { ToolsScreen() }
             composable(Screen.Profile.route) {
                 ProfileScreen(
                     onSignOut = onSignOut,

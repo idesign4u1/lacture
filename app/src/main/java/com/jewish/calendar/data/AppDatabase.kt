@@ -90,7 +90,10 @@ data class ZmanimAlarm(
     @PrimaryKey val zmanimKey: String,  // e.g. "sunrise", "sunset"
     val label: String,                  // e.g. "הנץ החמה"
     val scheduledTime: Long,            // Unix ms
-    val isActive: Boolean = true
+    val isActive: Boolean = true,
+    val repeatDaily: Boolean = false,   // reschedule every day at the same zman
+    val lat: Double = 31.7683,          // latitude for next-day recalculation
+    val lon: Double = 35.2137           // longitude for next-day recalculation
 )
 
 @Dao
@@ -134,10 +137,18 @@ val MIGRATION_2_3 = object : Migration(2, 3) {
     }
 }
 
+val MIGRATION_3_4 = object : Migration(3, 4) {
+    override fun migrate(database: SupportSQLiteDatabase) {
+        database.execSQL("ALTER TABLE zmanim_alarms ADD COLUMN repeatDaily INTEGER NOT NULL DEFAULT 0")
+        database.execSQL("ALTER TABLE zmanim_alarms ADD COLUMN lat REAL NOT NULL DEFAULT 31.7683")
+        database.execSQL("ALTER TABLE zmanim_alarms ADD COLUMN lon REAL NOT NULL DEFAULT 35.2137")
+    }
+}
+
 @Database(
     entities = [CycleRecord::class, CleanDayCheck::class, TevilahRecord::class,
                 CalendarEvent::class, ZmanimAlarm::class],
-    version = 3,
+    version = 4,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {

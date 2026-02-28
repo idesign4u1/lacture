@@ -18,7 +18,9 @@ data class ZmanimUiState(
     val hasLocationPermission: Boolean = false,
     val error: String? = null,
     val activeAlarmKeys: Set<String> = emptySet(),
-    val alarmMessage: String? = null
+    val alarmMessage: String? = null,
+    val userLat: Double = 31.7683,
+    val userLon: Double = 35.2137
 )
 
 @HiltViewModel
@@ -51,7 +53,14 @@ class ZmanimViewModel @Inject constructor(
 
     fun onLocationGranted(location: Location, cityName: String = "מיקומי הנוכחי") {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, hasLocationPermission = true) }
+            _uiState.update {
+                it.copy(
+                    isLoading = true,
+                    hasLocationPermission = true,
+                    userLat = location.latitude,
+                    userLon = location.longitude
+                )
+            }
             try {
                 val zmanim = zmanimRepository.calculateZmanim(Date(), location, cityName)
                 _uiState.update { it.copy(zmanim = zmanim, isLoading = false) }
@@ -70,8 +79,13 @@ class ZmanimViewModel @Inject constructor(
         else loadDefaultZmanim()
     }
 
-    /** Toggle alarm for a given zman. Returns immediately; result reflected via activeAlarmKeys. */
-    fun toggleAlarm(key: String, label: String, scheduledTimeMs: Long?) {
+    /** Toggle alarm for a given zman. Pass repeatDaily=true to reschedule every day automatically. */
+    fun toggleAlarm(
+        key: String,
+        label: String,
+        scheduledTimeMs: Long?,
+        repeatDaily: Boolean = false
+    ) {
         viewModelScope.launch {
             val isActive = key in _uiState.value.activeAlarmKeys
             if (isActive) {
@@ -87,11 +101,14 @@ class ZmanimViewModel @Inject constructor(
                     _uiState.update { it.copy(alarmMessage = "הזמן $label כבר עבר היום") }
                     return@launch
                 }
-                alarmScheduler.scheduleAlarm(key, label, scheduledTimeMs)
+                val lat = _uiState.value.userLat
+                val lon = _uiState.value.userLon
+                alarmScheduler.scheduleAlarm(key, label, scheduledTimeMs, repeatDaily, lat, lon)
+                val suffix = if (repeatDaily) " (כל יום)" else ""
                 _uiState.update {
                     it.copy(
                         activeAlarmKeys = it.activeAlarmKeys + key,
-                        alarmMessage = "התרעה הוגדרה עבור $label"
+                        alarmMessage = "התרעה הוגדרה עבור $label$suffix"
                     )
                 }
             }

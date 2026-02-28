@@ -215,8 +215,8 @@ fun ZmanimScreen(
     pendingAlarmItem?.let { item ->
         AlarmConfirmDialog(
             item = item,
-            onConfirm = {
-                viewModel.toggleAlarm(item.key, item.label, item.date?.time)
+            onConfirm = { repeatDaily ->
+                viewModel.toggleAlarm(item.key, item.label, item.date?.time, repeatDaily)
                 pendingAlarmItem = null
             },
             onDismiss = { pendingAlarmItem = null }
@@ -229,9 +229,11 @@ fun ZmanimScreen(
 @Composable
 private fun AlarmConfirmDialog(
     item: ZmanimItem,
-    onConfirm: () -> Unit,
+    onConfirm: (repeatDaily: Boolean) -> Unit,
     onDismiss: () -> Unit
 ) {
+    var repeatDaily by remember { mutableStateOf(false) }
+
     AlertDialog(
         onDismissRequest = onDismiss,
         icon = {
@@ -251,18 +253,41 @@ private fun AlarmConfirmDialog(
             )
         },
         text = {
-            Text(
-                text = if (item.hasAlarm)
-                    "האם לבטל את ההתרעה עבור\n${item.label} (${item.time})?"
-                else
-                    "האם להגדיר התרעה עבור\n${item.label} (${item.time})?",
-                textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth()
-            )
+            Column(modifier = Modifier.fillMaxWidth()) {
+                Text(
+                    text = if (item.hasAlarm)
+                        "האם לבטל את ההתרעה עבור\n${item.label} (${item.time})?"
+                    else
+                        "האם להגדיר התרעה עבור\n${item.label} (${item.time})?",
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                // Show "repeat daily" toggle only when setting a new alarm
+                if (!item.hasAlarm) {
+                    Spacer(Modifier.height(16.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.End
+                    ) {
+                        Text(
+                            text = "חזור כל יום",
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.weight(1f),
+                            textAlign = TextAlign.End
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Switch(
+                            checked = repeatDaily,
+                            onCheckedChange = { repeatDaily = it }
+                        )
+                    }
+                }
+            }
         },
         confirmButton = {
             Button(
-                onClick = onConfirm,
+                onClick = { onConfirm(repeatDaily) },
                 colors = ButtonDefaults.buttonColors(
                     containerColor = if (item.hasAlarm) MaterialTheme.colorScheme.error else Gold60
                 )

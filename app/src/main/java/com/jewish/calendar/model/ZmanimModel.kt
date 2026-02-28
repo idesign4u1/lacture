@@ -25,6 +25,25 @@ data class ZmanimModel(
     val isYomTov: Boolean
 )
 
+/** Looks up a zman Date by the alarm key string used throughout the app. */
+fun ZmanimModel.getZmanByKey(key: String): java.util.Date? = when (key) {
+    "alotHashachar"    -> alotHashachar
+    "sunrise"          -> sunrise
+    "sofZmanShmaGRA"   -> sofZmanKriatShmaGRA
+    "sofZmanShmaMGA"   -> sofZmanKriatShmaMGA
+    "sofZmanTfilaGRA"  -> sofZmanTfilaGRA
+    "sofZmanTfilaMGA"  -> sofZmanTfilaMGA
+    "chatzot"          -> chatzot
+    "minchaGedola"     -> minchaGedola
+    "minchaKetana"     -> minchaKetana
+    "plagHamincha"     -> plagHamincha
+    "candleLighting"   -> candleLighting
+    "sunset"           -> sunset
+    "tzaitHakochavim"  -> tzaitHakochavim
+    "tzaitHakochavimRT"-> tzaitHakochavimRT
+    else               -> null
+}
+
 data class ZmanimCalculationMethod(
     val name: String,
     val description: String

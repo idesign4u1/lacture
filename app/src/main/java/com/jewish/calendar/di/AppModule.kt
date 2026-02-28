@@ -23,7 +23,7 @@ object AppModule {
             AppDatabase::class.java,
             "yehuda_calendar_db"
         )
-            .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
             .build()
     }
 
