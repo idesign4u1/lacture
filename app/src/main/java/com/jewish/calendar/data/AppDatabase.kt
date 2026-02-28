@@ -83,6 +83,31 @@ interface TevilahDao {
     suspend fun deleteTevilah(tevilah: TevilahRecord)
 }
 
+// --- ZmanimAlarm entity & DAO ---
+
+@Entity(tableName = "zmanim_alarms")
+data class ZmanimAlarm(
+    @PrimaryKey val zmanimKey: String,  // e.g. "sunrise", "sunset"
+    val label: String,                  // e.g. "הנץ החמה"
+    val scheduledTime: Long,            // Unix ms
+    val isActive: Boolean = true
+)
+
+@Dao
+interface ZmanimAlarmDao {
+    @Query("SELECT * FROM zmanim_alarms WHERE isActive = 1")
+    suspend fun getAllActive(): List<ZmanimAlarm>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insert(alarm: ZmanimAlarm)
+
+    @Query("DELETE FROM zmanim_alarms WHERE zmanimKey = :key")
+    suspend fun delete(key: String)
+
+    @Query("SELECT * FROM zmanim_alarms WHERE zmanimKey = :key LIMIT 1")
+    suspend fun getByKey(key: String): ZmanimAlarm?
+}
+
 // --- Database ---
 
 val MIGRATION_1_2 = object : Migration(1, 2) {
@@ -97,9 +122,22 @@ val MIGRATION_1_2 = object : Migration(1, 2) {
     }
 }
 
+val MIGRATION_2_3 = object : Migration(2, 3) {
+    override fun migrate(database: SupportSQLiteDatabase) {
+        database.execSQL(
+            "CREATE TABLE IF NOT EXISTS zmanim_alarms " +
+            "(zmanimKey TEXT PRIMARY KEY NOT NULL, " +
+            "label TEXT NOT NULL, " +
+            "scheduledTime INTEGER NOT NULL, " +
+            "isActive INTEGER NOT NULL DEFAULT 1)"
+        )
+    }
+}
+
 @Database(
-    entities = [CycleRecord::class, CleanDayCheck::class, TevilahRecord::class, CalendarEvent::class],
-    version = 2,
+    entities = [CycleRecord::class, CleanDayCheck::class, TevilahRecord::class,
+                CalendarEvent::class, ZmanimAlarm::class],
+    version = 3,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -107,4 +145,5 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun cleanDayDao(): CleanDayDao
     abstract fun tevilahDao(): TevilahDao
     abstract fun calendarEventDao(): CalendarEventDao
+    abstract fun zmanimAlarmDao(): ZmanimAlarmDao
 }

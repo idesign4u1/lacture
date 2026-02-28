@@ -51,6 +51,20 @@ private suspend fun resolveCityName(
     } catch (_: Exception) { "מיקומי הנוכחי" }
 }
 
+// ── ZmanimItem data class ─────────────────────────────────────────────
+
+data class ZmanimItem(
+    val key: String,                          // unique identifier for alarm
+    val label: String,                        // Hebrew display name
+    val time: String,                         // formatted HH:mm
+    val date: Date?,                          // actual Date for alarm scheduling
+    val isHighlighted: Boolean = false,
+    val highlightColor: Color = Color.Unspecified,
+    val hasAlarm: Boolean = false
+)
+
+// ── Screen ────────────────────────────────────────────────────────────
+
 @SuppressLint("MissingPermission")
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalPermissionsApi::class)
 @Composable
@@ -64,6 +78,15 @@ fun ZmanimScreen(
     val context = LocalContext.current
     val fusedLocationClient = remember { LocationServices.getFusedLocationProviderClient(context) }
     val scope = rememberCoroutineScope()
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    // Show alarm feedback messages
+    LaunchedEffect(uiState.alarmMessage) {
+        uiState.alarmMessage?.let {
+            snackbarHostState.showSnackbar(it)
+            viewModel.clearAlarmMessage()
+        }
+    }
 
     // Auto-load real GPS location whenever permission status changes to granted
     LaunchedEffect(locationPermission.status.isGranted) {
@@ -79,6 +102,9 @@ fun ZmanimScreen(
             viewModel.onLocationDenied()
         }
     }
+
+    // Alarm confirmation dialog state
+    var pendingAlarmItem by remember { mutableStateOf<ZmanimItem?>(null) }
 
     Scaffold(
         topBar = {
@@ -102,9 +128,7 @@ fun ZmanimScreen(
                                     } else {
                                         viewModel.refreshZmanim()
                                     }
-                                } catch (_: Exception) {
-                                    viewModel.refreshZmanim()
-                                }
+                                } catch (_: Exception) { viewModel.refreshZmanim() }
                             }
                         } else {
                             viewModel.refreshZmanim()
@@ -125,7 +149,8 @@ fun ZmanimScreen(
                     containerColor = MaterialTheme.colorScheme.surface
                 )
             )
-        }
+        },
+        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
         Column(
             modifier = Modifier
@@ -136,44 +161,40 @@ fun ZmanimScreen(
         ) {
             if (uiState.isLoading) {
                 Box(
-                    Modifier
-                        .fillMaxWidth()
-                        .height(200.dp),
+                    Modifier.fillMaxWidth().height(200.dp),
                     contentAlignment = Alignment.Center
-                ) {
-                    CircularProgressIndicator()
-                }
+                ) { CircularProgressIndicator() }
             } else {
                 uiState.zmanim?.let { zmanim ->
+                    val activeKeys = uiState.activeAlarmKeys
+
                     LocationHeader(zmanim)
 
-                    if (zmanim.isShabbat || zmanim.isYomTov) {
-                        ShabbatBar(zmanim)
-                    }
-                    if (zmanim.isErevShabbat) {
-                        ErevShabbatBar(zmanim)
-                    }
+                    if (zmanim.isShabbat || zmanim.isYomTov) ShabbatBar(zmanim)
+                    if (zmanim.isErevShabbat) ErevShabbatBar(zmanim)
 
                     ZmanimSection(
                         title = "בוקר",
                         icon = Icons.Default.WbSunny,
                         color = Gold60,
-                        items = buildMorningZmanim(zmanim)
+                        items = buildMorningZmanim(zmanim, activeKeys),
+                        onItemClick = { pendingAlarmItem = it }
                     )
                     ZmanimSection(
                         title = "צהריים",
                         icon = Icons.Default.LightMode,
                         color = MaterialTheme.colorScheme.primary,
-                        items = buildAfternoonZmanim(zmanim)
+                        items = buildAfternoonZmanim(zmanim, activeKeys),
+                        onItemClick = { pendingAlarmItem = it }
                     )
                     ZmanimSection(
                         title = "ערב",
                         icon = Icons.Default.NightsStay,
                         color = ShabbatBlue,
-                        items = buildEveningZmanim(zmanim)
+                        items = buildEveningZmanim(zmanim, activeKeys),
+                        onItemClick = { pendingAlarmItem = it }
                     )
 
-                    // ── Daily study section ───────────────────────────
                     DailyStudySection(
                         state = studyState,
                         onItemClick = { dailyStudyViewModel.openItem(it) },
@@ -185,26 +206,84 @@ fun ZmanimScreen(
                     }
                 }
 
-                uiState.error?.let { error ->
-                    ErrorCard(error)
-                }
+                uiState.error?.let { ErrorCard(it) }
             }
         }
     }
+
+    // Alarm confirmation dialog
+    pendingAlarmItem?.let { item ->
+        AlarmConfirmDialog(
+            item = item,
+            onConfirm = {
+                viewModel.toggleAlarm(item.key, item.label, item.date?.time)
+                pendingAlarmItem = null
+            },
+            onDismiss = { pendingAlarmItem = null }
+        )
+    }
 }
 
-// ── Existing composables ──────────────────────────────────────────────
+// ── Alarm confirmation dialog ─────────────────────────────────────────
+
+@Composable
+private fun AlarmConfirmDialog(
+    item: ZmanimItem,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        icon = {
+            Icon(
+                if (item.hasAlarm) Icons.Default.NotificationsOff else Icons.Default.Notifications,
+                contentDescription = null,
+                tint = if (item.hasAlarm) MaterialTheme.colorScheme.error else Gold60,
+                modifier = Modifier.size(32.dp)
+            )
+        },
+        title = {
+            Text(
+                text = if (item.hasAlarm) "ביטול התרעה" else "הגדרת התרעה",
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth(),
+                fontWeight = FontWeight.Bold
+            )
+        },
+        text = {
+            Text(
+                text = if (item.hasAlarm)
+                    "האם לבטל את ההתרעה עבור\n${item.label} (${item.time})?"
+                else
+                    "האם להגדיר התרעה עבור\n${item.label} (${item.time})?",
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth()
+            )
+        },
+        confirmButton = {
+            Button(
+                onClick = onConfirm,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = if (item.hasAlarm) MaterialTheme.colorScheme.error else Gold60
+                )
+            ) {
+                Text(if (item.hasAlarm) "בטל התרעה" else "הגדר התרעה")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("לא עכשיו") }
+        }
+    )
+}
+
+// ── Composables ───────────────────────────────────────────────────────
 
 @Composable
 private fun LocationHeader(zmanim: ZmanimModel) {
     val dateFormatter = SimpleDateFormat("EEEE, d בMMMM", Locale("he"))
     Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.primaryContainer
-        )
+        modifier = Modifier.fillMaxWidth().padding(16.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
     ) {
         Row(
             modifier = Modifier.padding(16.dp),
@@ -237,9 +316,7 @@ private fun LocationHeader(zmanim: ZmanimModel) {
 @Composable
 private fun ShabbatBar(zmanim: ZmanimModel) {
     Surface(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 4.dp),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
         color = ShabbatBlue,
         shape = RoundedCornerShape(12.dp)
     ) {
@@ -252,9 +329,7 @@ private fun ShabbatBar(zmanim: ZmanimModel) {
             Spacer(Modifier.width(8.dp))
             Text(
                 text = if (zmanim.isShabbat) "שבת שלום!" else "יום טוב!",
-                color = Color.White,
-                fontWeight = FontWeight.Bold,
-                fontSize = 18.sp
+                color = Color.White, fontWeight = FontWeight.Bold, fontSize = 18.sp
             )
             Spacer(Modifier.width(8.dp))
             Icon(Icons.Default.Star, contentDescription = null, tint = ShabbatGold)
@@ -267,9 +342,7 @@ private fun ErevShabbatBar(zmanim: ZmanimModel) {
     val timeFormatter = SimpleDateFormat("HH:mm", Locale.getDefault())
     zmanim.candleLighting?.let { candleTime ->
         Surface(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 4.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
             color = Gold60.copy(alpha = 0.15f),
             shape = RoundedCornerShape(12.dp)
         ) {
@@ -280,9 +353,7 @@ private fun ErevShabbatBar(zmanim: ZmanimModel) {
             ) {
                 Text(
                     text = "הדלקת נרות: ${timeFormatter.format(candleTime)}",
-                    fontWeight = FontWeight.Bold,
-                    color = Gold80,
-                    fontSize = 16.sp
+                    fontWeight = FontWeight.Bold, color = Gold80, fontSize = 16.sp
                 )
                 Text("🕯️", fontSize = 24.sp)
             }
@@ -295,21 +366,14 @@ private fun ZmanimSection(
     title: String,
     icon: ImageVector,
     color: Color,
-    items: List<ZmanimItem>
+    items: List<ZmanimItem>,
+    onItemClick: (ZmanimItem) -> Unit
 ) {
     Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.padding(vertical = 4.dp)
-        ) {
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 4.dp)) {
             Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(20.dp))
             Spacer(Modifier.width(8.dp))
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = color
-            )
+            Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = color)
         }
 
         Card(
@@ -319,7 +383,7 @@ private fun ZmanimSection(
         ) {
             Column {
                 items.forEachIndexed { index, item ->
-                    ZmanimRow(item = item)
+                    ZmanimRow(item = item, onClick = { onItemClick(item) })
                     if (index < items.lastIndex) {
                         Divider(modifier = Modifier.padding(horizontal = 16.dp))
                     }
@@ -329,26 +393,31 @@ private fun ZmanimSection(
     }
 }
 
-data class ZmanimItem(
-    val label: String,
-    val time: String,
-    val isHighlighted: Boolean = false,
-    val highlightColor: Color = Color.Unspecified
-)
-
 @Composable
-private fun ZmanimRow(item: ZmanimItem) {
+private fun ZmanimRow(item: ZmanimItem, onClick: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .clickable(onClick = onClick)
             .background(
                 if (item.isHighlighted) item.highlightColor.copy(alpha = 0.08f)
                 else Color.Transparent
             )
-            .padding(horizontal = 16.dp, vertical = 12.dp),
+            .padding(horizontal = 16.dp, vertical = 10.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
+        // Bell icon — shows alarm status
+        Icon(
+            imageVector = if (item.hasAlarm) Icons.Default.Notifications else Icons.Default.NotificationsNone,
+            contentDescription = if (item.hasAlarm) "התרעה פעילה" else "הגדר התרעה",
+            tint = if (item.hasAlarm) Gold60 else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f),
+            modifier = Modifier.size(18.dp)
+        )
+
+        Spacer(Modifier.width(8.dp))
+
+        // Time — left side in RTL layout
         Text(
             text = item.time,
             style = MaterialTheme.typography.titleMedium,
@@ -356,6 +425,10 @@ private fun ZmanimRow(item: ZmanimItem) {
             color = if (item.isHighlighted) item.highlightColor else MaterialTheme.colorScheme.onSurface,
             fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
         )
+
+        Spacer(Modifier.weight(1f))
+
+        // Label — right side in RTL layout
         Text(
             text = item.label,
             style = MaterialTheme.typography.bodyMedium,
@@ -369,23 +442,11 @@ private fun ZmanimRow(item: ZmanimItem) {
 @Composable
 private fun LocationNote(onRequestPermission: () -> Unit) {
     Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(16.dp)
-            .clickable { onRequestPermission() },
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.secondaryContainer
-        )
+        modifier = Modifier.fillMaxWidth().padding(16.dp).clickable { onRequestPermission() },
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
     ) {
-        Row(
-            modifier = Modifier.padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                Icons.Default.LocationOff,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.secondary
-            )
+        Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+            Icon(Icons.Default.LocationOff, contentDescription = null, tint = MaterialTheme.colorScheme.secondary)
             Spacer(Modifier.width(8.dp))
             Text(
                 text = "הזמנים מחושבים לירושלים. לחץ להפעלת GPS לזמנים מדויקים",
@@ -401,50 +462,89 @@ private fun LocationNote(onRequestPermission: () -> Unit) {
 @Composable
 private fun ErrorCard(error: String) {
     Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(16.dp),
+        modifier = Modifier.fillMaxWidth().padding(16.dp),
         colors = CardDefaults.cardColors(containerColor = HolidayRed.copy(alpha = 0.1f))
     ) {
-        Text(
-            text = error,
-            modifier = Modifier.padding(16.dp),
-            color = HolidayRed,
-            textAlign = TextAlign.Center
-        )
+        Text(text = error, modifier = Modifier.padding(16.dp), color = HolidayRed, textAlign = TextAlign.Center)
     }
 }
 
-private fun buildMorningZmanim(zmanim: ZmanimModel): List<ZmanimItem> {
+// ── Zmanim builders ───────────────────────────────────────────────────
+
+private fun buildMorningZmanim(zmanim: ZmanimModel, activeKeys: Set<String>): List<ZmanimItem> {
     val fmt = SimpleDateFormat("HH:mm", Locale.getDefault())
     return listOfNotNull(
-        zmanim.alotHashachar?.let { ZmanimItem("עלות השחר", fmt.format(it)) },
-        zmanim.sunrise?.let { ZmanimItem("הנץ החמה", fmt.format(it), isHighlighted = true, highlightColor = Gold60) },
-        zmanim.sofZmanKriatShmaGRA?.let { ZmanimItem("סוף ז\"ק שמע (גר\"א)", fmt.format(it)) },
-        zmanim.sofZmanKriatShmaMGA?.let { ZmanimItem("סוף ז\"ק שמע (מג\"א)", fmt.format(it)) },
-        zmanim.sofZmanTfilaGRA?.let { ZmanimItem("סוף זמן תפילה (גר\"א)", fmt.format(it)) },
-        zmanim.sofZmanTfilaMGA?.let { ZmanimItem("סוף זמן תפילה (מג\"א)", fmt.format(it)) }
+        zmanim.alotHashachar?.let {
+            ZmanimItem("alotHashachar", "עלות השחר", fmt.format(it), it,
+                hasAlarm = "alotHashachar" in activeKeys)
+        },
+        zmanim.sunrise?.let {
+            ZmanimItem("sunrise", "הנץ החמה", fmt.format(it), it,
+                isHighlighted = true, highlightColor = Gold60,
+                hasAlarm = "sunrise" in activeKeys)
+        },
+        zmanim.sofZmanKriatShmaGRA?.let {
+            ZmanimItem("sofZmanShmaGRA", "סוף ז\"ק שמע (גר\"א)", fmt.format(it), it,
+                hasAlarm = "sofZmanShmaGRA" in activeKeys)
+        },
+        zmanim.sofZmanKriatShmaMGA?.let {
+            ZmanimItem("sofZmanShmaMGA", "סוף ז\"ק שמע (מג\"א)", fmt.format(it), it,
+                hasAlarm = "sofZmanShmaMGA" in activeKeys)
+        },
+        zmanim.sofZmanTfilaGRA?.let {
+            ZmanimItem("sofZmanTfilaGRA", "סוף זמן תפילה (גר\"א)", fmt.format(it), it,
+                hasAlarm = "sofZmanTfilaGRA" in activeKeys)
+        },
+        zmanim.sofZmanTfilaMGA?.let {
+            ZmanimItem("sofZmanTfilaMGA", "סוף זמן תפילה (מג\"א)", fmt.format(it), it,
+                hasAlarm = "sofZmanTfilaMGA" in activeKeys)
+        }
     )
 }
 
-private fun buildAfternoonZmanim(zmanim: ZmanimModel): List<ZmanimItem> {
+private fun buildAfternoonZmanim(zmanim: ZmanimModel, activeKeys: Set<String>): List<ZmanimItem> {
     val fmt = SimpleDateFormat("HH:mm", Locale.getDefault())
     return listOfNotNull(
-        zmanim.chatzot?.let { ZmanimItem("חצות היום", fmt.format(it), isHighlighted = true, highlightColor = Blue60) },
-        zmanim.minchaGedola?.let { ZmanimItem("מנחה גדולה", fmt.format(it)) },
-        zmanim.minchaKetana?.let { ZmanimItem("מנחה קטנה", fmt.format(it)) },
-        zmanim.plagHamincha?.let { ZmanimItem("פלג המנחה", fmt.format(it)) }
+        zmanim.chatzot?.let {
+            ZmanimItem("chatzot", "חצות היום", fmt.format(it), it,
+                isHighlighted = true, highlightColor = Blue60,
+                hasAlarm = "chatzot" in activeKeys)
+        },
+        zmanim.minchaGedola?.let {
+            ZmanimItem("minchaGedola", "מנחה גדולה", fmt.format(it), it,
+                hasAlarm = "minchaGedola" in activeKeys)
+        },
+        zmanim.minchaKetana?.let {
+            ZmanimItem("minchaKetana", "מנחה קטנה", fmt.format(it), it,
+                hasAlarm = "minchaKetana" in activeKeys)
+        },
+        zmanim.plagHamincha?.let {
+            ZmanimItem("plagHamincha", "פלג המנחה", fmt.format(it), it,
+                hasAlarm = "plagHamincha" in activeKeys)
+        }
     )
 }
 
-private fun buildEveningZmanim(zmanim: ZmanimModel): List<ZmanimItem> {
+private fun buildEveningZmanim(zmanim: ZmanimModel, activeKeys: Set<String>): List<ZmanimItem> {
     val fmt = SimpleDateFormat("HH:mm", Locale.getDefault())
     return listOfNotNull(
         zmanim.candleLighting?.let {
-            ZmanimItem("הדלקת נרות", fmt.format(it), isHighlighted = true, highlightColor = Gold60)
+            ZmanimItem("candleLighting", "הדלקת נרות", fmt.format(it), it,
+                isHighlighted = true, highlightColor = Gold60,
+                hasAlarm = "candleLighting" in activeKeys)
         },
-        zmanim.sunset?.let { ZmanimItem("שקיעת החמה", fmt.format(it), isHighlighted = true, highlightColor = HolidayRed.copy(0.8f)) },
-        zmanim.tzaitHakochavim?.let { ZmanimItem("צאת הכוכבים", fmt.format(it)) },
-        zmanim.tzaitHakochavimRT?.let { ZmanimItem("צאת הכוכבים (ר\"ת)", fmt.format(it)) }
+        zmanim.sunset?.let {
+            ZmanimItem("sunset", "שקיעת החמה", fmt.format(it), it,
+                isHighlighted = true, highlightColor = HolidayRed.copy(0.8f),
+                hasAlarm = "sunset" in activeKeys)
+        },
+        zmanim.tzaitHakochavim?.let {
+            ZmanimItem("tzaitHakochavim", "צאת הכוכבים", fmt.format(it), it,
+                hasAlarm = "tzaitHakochavim" in activeKeys)
+        },
+        zmanim.tzaitHakochavimRT?.let {
+            ZmanimItem("tzaitHakochavimRT", "צאת הכוכבים (ר\"ת)", fmt.format(it), it,
+                hasAlarm = "tzaitHakochavimRT" in activeKeys)
+        }
     )
 }

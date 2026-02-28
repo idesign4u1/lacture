@@ -1,5 +1,7 @@
 package com.jewish.calendar.ui.screens.mikveh
 
+import android.Manifest
+import android.annotation.SuppressLint
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.*
@@ -23,12 +25,19 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.google.accompanist.permissions.ExperimentalPermissionsApi
+import com.google.accompanist.permissions.isGranted
+import com.google.accompanist.permissions.rememberPermissionState
+import com.google.android.gms.location.LocationServices
 import com.jewish.calendar.model.CycleStatus
 import com.jewish.calendar.model.TevilahRecord
 import com.jewish.calendar.ui.theme.*
 import com.jewish.calendar.viewmodel.MikvehViewModel
 import java.text.SimpleDateFormat
 import java.util.*
+import kotlin.math.*
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -532,6 +541,96 @@ private data class AccessibleMikveh(
 private val MIKVEH_REGIONS = listOf(
     "הכל", "גוש דן", "שרון", "חיפה", "צפון", "ירושלים", "שפלה ודרום", "שומרון"
 )
+
+// Approximate city center coordinates (lat, lon)
+private val CITY_COORDS: Map<String, Pair<Double, Double>> = mapOf(
+    // גוש דן
+    "אור יהודה" to (32.027 to 34.858), "אזור" to (31.990 to 34.814),
+    "אחיעזר" to (31.936 to 34.825), "אלעד" to (32.053 to 34.954),
+    "בית דגן" to (31.996 to 34.834), "בני ברק" to (32.083 to 34.834),
+    "בני עייש" to (31.885 to 34.816), "בת ים" to (32.017 to 34.752),
+    "גבעת שמואל" to (32.072 to 34.850), "גבעתיים" to (32.070 to 34.811),
+    "גדרה" to (31.812 to 34.773), "גני תקווה" to (32.065 to 34.888),
+    "חולון" to (32.018 to 34.782), "יהוד" to (32.028 to 34.888),
+    "יהוד מונוסון" to (32.028 to 34.888), "כפר חב\"ד" to (31.994 to 34.900),
+    "לוד" to (31.951 to 34.896), "מזכרת בתיה" to (31.865 to 34.811),
+    "נס ציונה" to (31.930 to 34.799), "סביון" to (32.050 to 34.903),
+    "פתח תקווה" to (32.087 to 34.888), "צור יגאל" to (32.203 to 34.930),
+    "קרית אונו" to (32.061 to 34.859), "ראשון לציון" to (31.973 to 34.793),
+    "רחובות" to (31.899 to 34.813), "רמלה" to (31.928 to 34.872),
+    "רמת גן" to (32.068 to 34.824), "תל אביב יפו" to (32.085 to 34.782),
+    "תל מונד" to (32.268 to 34.921),
+    // שרון
+    "אבן יהודה" to (32.274 to 34.900), "אור עקיבא" to (32.502 to 34.922),
+    "אורנית" to (32.135 to 34.980), "אליכין" to (32.424 to 34.946),
+    "אלפי מנשה" to (32.157 to 35.020), "בנימינה" to (32.513 to 34.952),
+    "גבעת עדה" to (32.506 to 34.957), "הוד השרון" to (32.149 to 34.890),
+    "הרצליה" to (32.162 to 34.845), "זכרון יעקב" to (32.567 to 34.944),
+    "חדרה" to (32.434 to 34.919), "כפר יונה" to (32.293 to 34.926),
+    "כפר סבא" to (32.176 to 34.907), "נתניה" to (32.322 to 34.853),
+    "עמנואל" to (32.153 to 35.063), "פרדס חנה כרכור" to (32.473 to 34.969),
+    "פרדס חנה-כרכור" to (32.473 to 34.969), "פרדסיה" to (32.278 to 34.926),
+    "קדימה צורן" to (32.273 to 34.918), "קיסריה" to (32.505 to 34.912),
+    "ראש העין" to (32.096 to 34.958), "רמת השרון" to (32.146 to 34.839),
+    "רעננה" to (32.183 to 34.870),
+    // חיפה
+    "חיפה" to (32.794 to 34.990), "טירת הכרמל" to (32.763 to 34.971),
+    "נשר" to (32.768 to 35.029), "קרית אתא" to (32.798 to 35.088),
+    "קרית ביאליק" to (32.830 to 35.074), "קרית ים" to (32.852 to 35.067),
+    "קרית מוצקין" to (32.827 to 35.073), "קרית טבעון" to (32.717 to 35.122),
+    "רכסים" to (32.743 to 35.074), "רמת ישי" to (32.706 to 35.160),
+    "עכו" to (32.930 to 35.082), "נהריה" to (33.005 to 35.095),
+    "עתלית" to (32.704 to 34.943),
+    // צפון
+    "בית שאן" to (32.499 to 35.497), "חיספין" to (32.979 to 35.745),
+    "חצור הגלילית" to (32.992 to 35.544), "טבריה" to (32.792 to 35.531),
+    "יבניאל" to (32.745 to 35.509), "יוקנעם עילית" to (32.659 to 35.109),
+    "יקנעם עילית" to (32.659 to 35.109), "כפר תבור" to (32.687 to 35.429),
+    "כרמיאל" to (32.912 to 35.303), "מגדל" to (32.837 to 35.502),
+    "מגדל העמק" to (32.676 to 35.241), "מטולה" to (33.276 to 35.571),
+    "מעלות תרשיחא" to (32.995 to 35.272), "נוף הגליל" to (32.701 to 35.286),
+    "עפולה" to (32.607 to 35.290), "פוריה נווה עובד" to (32.726 to 35.543),
+    "צפת" to (32.965 to 35.498), "קצרין" to (32.991 to 35.689),
+    "קרית שמונה" to (33.208 to 35.571), "שלומי" to (33.081 to 35.138),
+    // ירושלים
+    "אדם" to (31.950 to 35.268), "אלון שבות" to (31.659 to 35.145),
+    "אלעזר" to (31.644 to 35.141), "אפרת" to (31.660 to 35.178),
+    "בית שמש" to (31.752 to 34.986), "ביתר עילית" to (31.697 to 35.115),
+    "בת עין" to (31.641 to 35.109), "גבעת זאב" to (31.860 to 35.182),
+    "טלז סטון" to (31.823 to 35.127), "טלמון" to (31.961 to 35.206),
+    "ירושלים" to (31.768 to 35.214), "כפר אלדד" to (31.621 to 35.241),
+    "כרמי צור" to (31.616 to 35.115), "מבשרת ציון" to (31.800 to 35.133),
+    "מודיעין עילית" to (31.920 to 35.009), "מעלה אדומים" to (31.774 to 35.300),
+    "נוה דניאל" to (31.653 to 35.118), "נוקדים" to (31.603 to 35.267),
+    "עלי" to (32.062 to 35.291), "עפרה" to (31.974 to 35.227),
+    "קרית ארבע" to (31.527 to 35.114), "תל ציון" to (31.968 to 35.219),
+    "תקוע" to (31.626 to 35.206),
+    // שפלה ודרום
+    "אופקים" to (31.312 to 34.618), "אילת" to (29.561 to 34.950),
+    "אשדוד" to (31.804 to 34.655), "אשקלון" to (31.666 to 34.574),
+    "באר יעקב" to (31.944 to 34.839), "באר שבע" to (31.252 to 34.792),
+    "בטחה" to (31.378 to 34.573), "בית הגדי" to (31.547 to 34.566),
+    "דימונה" to (31.069 to 35.034), "יבנה" to (31.876 to 34.747),
+    "ירוחם" to (30.986 to 34.930), "מיתר" to (31.352 to 34.904),
+    "מעגלים" to (31.244 to 34.588), "מצפה רמון" to (30.610 to 34.803),
+    "מרכז שפירא" to (31.740 to 34.668), "נתיבות" to (31.422 to 34.592),
+    "ערד" to (31.259 to 35.213), "קרית גת" to (31.608 to 34.768),
+    "קרית מלאכי" to (31.731 to 34.743), "קרית עקרון" to (31.864 to 34.820),
+    "שדרות" to (31.523 to 34.598), "תפרח" to (31.419 to 34.578),
+    // שומרון
+    "איתמר" to (32.139 to 35.312), "אלון מורה" to (32.187 to 35.328),
+    "אלקנה" to (32.105 to 34.968), "אריאל" to (32.106 to 35.166),
+    "הר ברכה" to (32.155 to 35.296), "יצהר" to (32.143 to 35.270),
+    "יקיר" to (32.110 to 35.091), "קדומים" to (32.143 to 35.048),
+    "קרני שומרון" to (32.176 to 35.030)
+)
+
+private fun distKm(lat1: Double, lon1: Double, lat2: Double, lon2: Double): Double {
+    val dLat = Math.toRadians(lat2 - lat1)
+    val dLon = Math.toRadians(lon2 - lon1)
+    val a = sin(dLat / 2).pow(2) + cos(Math.toRadians(lat1)) * cos(Math.toRadians(lat2)) * sin(dLon / 2).pow(2)
+    return 6371 * 2 * atan2(sqrt(a), sqrt(1 - a))
+}
 
 private val ACCESSIBLE_MIKVEHS = listOf(
     // ── גוש דן ──────────────────────────────────────────────────────────────
@@ -1084,15 +1183,41 @@ private val ACCESSIBLE_MIKVEHS = listOf(
     AccessibleMikveh("קרני שומרון", "הנבל 25", "", "שומרון", "https://waze.com/ul?q=הנבל 25 קרני שומרון"),
 )
 
-// --- Mikveh Map Tab — Accessible Mikvehs with Region Filter ---
+// --- Mikveh Map Tab — Accessible Mikvehs with Region Filter & GPS Sorting ---
 
+@SuppressLint("MissingPermission")
+@OptIn(ExperimentalPermissionsApi::class)
 @Composable
 private fun MikvehMapTab() {
     var selectedRegion by remember { mutableStateOf("הכל") }
+    var userLat by remember { mutableStateOf<Double?>(null) }
+    var userLon by remember { mutableStateOf<Double?>(null) }
 
-    val filtered = remember(selectedRegion) {
-        if (selectedRegion == "הכל") ACCESSIBLE_MIKVEHS
-        else ACCESSIBLE_MIKVEHS.filter { it.region == selectedRegion }
+    val context = LocalContext.current
+    val locationPermission = rememberPermissionState(Manifest.permission.ACCESS_FINE_LOCATION)
+    val fusedLocationClient = remember { LocationServices.getFusedLocationProviderClient(context) }
+    val scope = rememberCoroutineScope()
+
+    // Load location when permission is granted
+    LaunchedEffect(locationPermission.status.isGranted) {
+        if (locationPermission.status.isGranted) {
+            try {
+                val loc = fusedLocationClient.lastLocation.await()
+                loc?.let { userLat = it.latitude; userLon = it.longitude }
+            } catch (_: Exception) {}
+        }
+    }
+
+    val filtered = remember(selectedRegion, userLat, userLon) {
+        val base = if (selectedRegion == "הכל") ACCESSIBLE_MIKVEHS
+                   else ACCESSIBLE_MIKVEHS.filter { it.region == selectedRegion }
+        val uLat = userLat; val uLon = userLon
+        if (uLat != null && uLon != null) {
+            base.sortedBy { m ->
+                val c = CITY_COORDS[m.city]
+                if (c != null) distKm(uLat, uLon, c.first, c.second) else Double.MAX_VALUE
+            }
+        } else base
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
@@ -1102,15 +1227,56 @@ private fun MikvehMapTab() {
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp, vertical = 10.dp),
-            horizontalArrangement = Arrangement.End,
+            horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
+            // GPS location button
+            IconButton(
+                onClick = {
+                    if (locationPermission.status.isGranted) {
+                        scope.launch {
+                            try {
+                                val loc = fusedLocationClient.lastLocation.await()
+                                loc?.let { userLat = it.latitude; userLon = it.longitude }
+                            } catch (_: Exception) {}
+                        }
+                    } else {
+                        locationPermission.launchPermissionRequest()
+                    }
+                }
+            ) {
+                Icon(
+                    Icons.Default.MyLocation,
+                    contentDescription = "מיין לפי מיקום",
+                    tint = if (userLat != null) PurityPurple
+                           else MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
             Text(
                 text = "מקוואות מונגשות ♿ עם מעלון",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
                 color = PurityPurple
             )
+        }
+
+        // ── Sort indicator ───────────────────────────────────────────────
+        if (userLat != null) {
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 2.dp),
+                color = PurityPurple.copy(alpha = 0.08f),
+                shape = RoundedCornerShape(8.dp)
+            ) {
+                Text(
+                    text = "ממויין לפי מרחק מהמיקום שלך",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = PurityPurple,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(vertical = 4.dp)
+                )
+            }
         }
 
         // ── Region filter chips ──────────────────────────────────────────
@@ -1150,14 +1316,17 @@ private fun MikvehMapTab() {
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             items(filtered) { mikveh ->
-                AccessibleMikvehCard(mikveh)
+                val dist = if (userLat != null && userLon != null)
+                    CITY_COORDS[mikveh.city]?.let { distKm(userLat!!, userLon!!, it.first, it.second) }
+                else null
+                AccessibleMikvehCard(mikveh, dist)
             }
         }
     }
 }
 
 @Composable
-private fun AccessibleMikvehCard(mikveh: AccessibleMikveh) {
+private fun AccessibleMikvehCard(mikveh: AccessibleMikveh, distanceKm: Double? = null) {
     val context = LocalContext.current
     val phone = mikveh.contact.ifBlank { null }
 
@@ -1168,12 +1337,41 @@ private fun AccessibleMikvehCard(mikveh: AccessibleMikveh) {
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
 
-            // City + region badge row
+            // City + region badge + distance row
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                // Distance badge (shown when GPS is available)
+                if (distanceKm != null) {
+                    val distText = if (distanceKm < 1.0) "${(distanceKm * 1000).toInt()} מ'"
+                                   else "${"%.1f".format(distanceKm)} ק\"מ"
+                    Surface(
+                        color = PurityPurple.copy(alpha = 0.08f),
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(2.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.NearMe,
+                                contentDescription = null,
+                                tint = PurityPurple,
+                                modifier = Modifier.size(12.dp)
+                            )
+                            Text(
+                                text = distText,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = PurityPurple
+                            )
+                        }
+                    }
+                } else {
+                    Spacer(Modifier.width(0.dp))
+                }
                 // Region badge (left/start in RTL = visually right)
                 Surface(
                     color = PurityPurple.copy(alpha = 0.12f),
