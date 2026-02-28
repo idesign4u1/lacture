@@ -28,12 +28,23 @@ import com.google.accompanist.permissions.rememberMultiplePermissionsState
 import com.jewish.calendar.ui.screens.auth.LoginScreen
 import com.jewish.calendar.ui.screens.auth.RegisterScreen
 import com.jewish.calendar.ui.screens.bot.HalachicBotScreen
-import com.jewish.calendar.ui.screens.tools.ToolsScreen
 import com.jewish.calendar.ui.screens.calendar.CalendarScreen
 import com.jewish.calendar.ui.screens.mikveh.MikvehScreen
 import com.jewish.calendar.ui.screens.profile.ProfileScreen
+import com.jewish.calendar.ui.screens.tools.CompassScreen
+import com.jewish.calendar.ui.screens.tools.KotelScreen
+import com.jewish.calendar.ui.screens.tools.ToolsScreen
 import com.jewish.calendar.ui.screens.zmanim.ZmanimScreen
 import com.jewish.calendar.viewmodel.AuthViewModel
+
+// ── Routes ────────────────────────────────────────────────────────────
+
+private const val ROUTE_LOGIN    = "login"
+private const val ROUTE_REGISTER = "register"
+private const val ROUTE_COMPASS  = "compass"
+private const val ROUTE_KOTEL    = "kotel"
+
+// ── Bottom-nav screens ────────────────────────────────────────────────
 
 sealed class Screen(
     val route: String,
@@ -42,18 +53,22 @@ sealed class Screen(
     val unselectedIcon: ImageVector,
     val femaleOnly: Boolean = false
 ) {
-    object Calendar : Screen("calendar", "לוח שנה",    Icons.Filled.CalendarMonth, Icons.Outlined.CalendarMonth)
-    object Zmanim   : Screen("zmanim",   "זמנים",      Icons.Filled.Schedule,      Icons.Outlined.Schedule)
-    object Mikveh   : Screen("mikveh",   "טהרה",       Icons.Filled.Water,         Icons.Outlined.Water,         femaleOnly = true)
-    object Bot      : Screen("bot",      "שאל רב",     Icons.Filled.Forum,         Icons.Outlined.Forum)
-    object Tools    : Screen("tools",    "כלים",       Icons.Filled.Handyman,      Icons.Outlined.Handyman)
-    object Profile  : Screen("profile",  "פרופיל",    Icons.Filled.AccountCircle, Icons.Outlined.AccountCircle)
+    object Calendar : Screen("calendar", "לוח שנה",  Icons.Filled.CalendarMonth, Icons.Outlined.CalendarMonth)
+    object Zmanim   : Screen("zmanim",   "זמנים",    Icons.Filled.Schedule,      Icons.Outlined.Schedule)
+    object Mikveh   : Screen("mikveh",   "טהרה",     Icons.Filled.Water,         Icons.Outlined.Water, femaleOnly = true)
+    object Bot      : Screen("bot",      "שאל רב",   Icons.Filled.Forum,         Icons.Outlined.Forum)
+    object Tools    : Screen("tools",    "כלים",     Icons.Filled.Handyman,      Icons.Outlined.Handyman)
+    object Profile  : Screen("profile",  "פרופיל",  Icons.Filled.AccountCircle, Icons.Outlined.AccountCircle)
 }
 
-private const val ROUTE_LOGIN    = "login"
-private const val ROUTE_REGISTER = "register"
+val bottomNavItems = listOf(
+    Screen.Calendar, Screen.Zmanim, Screen.Mikveh, Screen.Bot, Screen.Tools, Screen.Profile
+)
 
-val bottomNavItems = listOf(Screen.Calendar, Screen.Zmanim, Screen.Mikveh, Screen.Bot, Screen.Tools, Screen.Profile)
+// Routes where the bottom bar should be HIDDEN (sub-screens / full-screen tools)
+private val routesWithoutBottomBar = setOf(ROUTE_COMPASS, ROUTE_KOTEL)
+
+// ── Root ──────────────────────────────────────────────────────────────
 
 @Composable
 fun AppNavigation() {
@@ -71,6 +86,8 @@ fun AppNavigation() {
         )
     }
 }
+
+// ── Auth flow ─────────────────────────────────────────────────────────
 
 @Composable
 private fun AuthNavigation(authViewModel: AuthViewModel) {
@@ -91,10 +108,11 @@ private fun AuthNavigation(authViewModel: AuthViewModel) {
     }
 }
 
+// ── Main flow ─────────────────────────────────────────────────────────
+
 @OptIn(ExperimentalPermissionsApi::class)
 @Composable
 private fun MainNavigation(authViewModel: AuthViewModel, isFemale: Boolean) {
-    // Request location + notification permissions on first launch
     val requiredPermissions = buildList {
         add(Manifest.permission.ACCESS_FINE_LOCATION)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -102,9 +120,7 @@ private fun MainNavigation(authViewModel: AuthViewModel, isFemale: Boolean) {
         }
     }
     val permissionsState = rememberMultiplePermissionsState(requiredPermissions)
-    LaunchedEffect(Unit) {
-        permissionsState.launchMultiplePermissionRequest()
-    }
+    LaunchedEffect(Unit) { permissionsState.launchMultiplePermissionRequest() }
 
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
@@ -112,6 +128,7 @@ private fun MainNavigation(authViewModel: AuthViewModel, isFemale: Boolean) {
     val isLandscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
 
     val visibleItems = bottomNavItems.filter { !it.femaleOnly || isFemale }
+    val showBottomBar = currentRoute !in routesWithoutBottomBar
     val onSignOut = { authViewModel.signOut() }
 
     val onNavItemClick: (String) -> Unit = { route ->
@@ -122,7 +139,6 @@ private fun MainNavigation(authViewModel: AuthViewModel, isFemale: Boolean) {
         }
     }
 
-    // Shared NavHost — used in both portrait (Scaffold) and landscape (Row) layouts
     val navHostContent: @Composable (Modifier) -> Unit = { modifier ->
         NavHost(
             navController = navController,
@@ -134,10 +150,19 @@ private fun MainNavigation(authViewModel: AuthViewModel, isFemale: Boolean) {
             if (isFemale) {
                 composable(Screen.Mikveh.route) { MikvehScreen() }
             }
-            composable(Screen.Bot.route) {
-                HalachicBotScreen(onSignOut = onSignOut)
+            composable(Screen.Bot.route) { HalachicBotScreen(onSignOut = onSignOut) }
+
+            // Tools hub
+            composable(Screen.Tools.route) {
+                ToolsScreen(
+                    onNavigateToCompass = { navController.navigate(ROUTE_COMPASS) },
+                    onNavigateToKotel   = { navController.navigate(ROUTE_KOTEL) }
+                )
             }
-            composable(Screen.Tools.route) { ToolsScreen() }
+            // Tool sub-screens (no bottom bar)
+            composable(ROUTE_COMPASS) { CompassScreen(onBack = { navController.popBackStack() }) }
+            composable(ROUTE_KOTEL)   { KotelScreen(onBack = { navController.popBackStack() }) }
+
             composable(Screen.Profile.route) {
                 ProfileScreen(
                     onSignOut = onSignOut,
@@ -148,39 +173,12 @@ private fun MainNavigation(authViewModel: AuthViewModel, isFemale: Boolean) {
     }
 
     if (isLandscape) {
-        // Landscape: NavigationRail on the side instead of bottom bar
         Row(modifier = Modifier.fillMaxSize()) {
-            NavigationRail {
-                visibleItems.forEach { screen ->
-                    val isSelected = currentRoute == screen.route
-                    NavigationRailItem(
-                        icon = {
-                            Icon(
-                                imageVector = if (isSelected) screen.selectedIcon else screen.unselectedIcon,
-                                contentDescription = screen.labelHebrew
-                            )
-                        },
-                        label = {
-                            Text(
-                                screen.labelHebrew,
-                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
-                            )
-                        },
-                        selected = isSelected,
-                        onClick = { onNavItemClick(screen.route) }
-                    )
-                }
-            }
-            navHostContent(Modifier.weight(1f).fillMaxSize())
-        }
-    } else {
-        // Portrait: bottom NavigationBar inside Scaffold
-        Scaffold(
-            bottomBar = {
-                NavigationBar {
+            if (showBottomBar) {
+                NavigationRail {
                     visibleItems.forEach { screen ->
                         val isSelected = currentRoute == screen.route
-                        NavigationBarItem(
+                        NavigationRailItem(
                             icon = {
                                 Icon(
                                     imageVector = if (isSelected) screen.selectedIcon else screen.unselectedIcon,
@@ -196,6 +194,35 @@ private fun MainNavigation(authViewModel: AuthViewModel, isFemale: Boolean) {
                             selected = isSelected,
                             onClick = { onNavItemClick(screen.route) }
                         )
+                    }
+                }
+            }
+            navHostContent(Modifier.weight(1f).fillMaxSize())
+        }
+    } else {
+        Scaffold(
+            bottomBar = {
+                if (showBottomBar) {
+                    NavigationBar {
+                        visibleItems.forEach { screen ->
+                            val isSelected = currentRoute == screen.route
+                            NavigationBarItem(
+                                icon = {
+                                    Icon(
+                                        imageVector = if (isSelected) screen.selectedIcon else screen.unselectedIcon,
+                                        contentDescription = screen.labelHebrew
+                                    )
+                                },
+                                label = {
+                                    Text(
+                                        screen.labelHebrew,
+                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                                    )
+                                },
+                                selected = isSelected,
+                                onClick = { onNavItemClick(screen.route) }
+                            )
+                        }
                     }
                 }
             }
