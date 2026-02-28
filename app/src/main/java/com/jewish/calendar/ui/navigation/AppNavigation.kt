@@ -1,6 +1,8 @@
 package com.jewish.calendar.ui.navigation
 
+import android.Manifest
 import android.content.res.Configuration
+import android.os.Build
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -21,6 +23,8 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.google.accompanist.permissions.ExperimentalPermissionsApi
+import com.google.accompanist.permissions.rememberMultiplePermissionsState
 import com.jewish.calendar.ui.screens.auth.LoginScreen
 import com.jewish.calendar.ui.screens.auth.RegisterScreen
 import com.jewish.calendar.ui.screens.bot.HalachicBotScreen
@@ -85,8 +89,21 @@ private fun AuthNavigation(authViewModel: AuthViewModel) {
     }
 }
 
+@OptIn(ExperimentalPermissionsApi::class)
 @Composable
 private fun MainNavigation(authViewModel: AuthViewModel, isFemale: Boolean) {
+    // Request location + notification permissions on first launch
+    val requiredPermissions = buildList {
+        add(Manifest.permission.ACCESS_FINE_LOCATION)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            add(Manifest.permission.POST_NOTIFICATIONS)
+        }
+    }
+    val permissionsState = rememberMultiplePermissionsState(requiredPermissions)
+    LaunchedEffect(Unit) {
+        permissionsState.launchMultiplePermissionRequest()
+    }
+
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
