@@ -202,7 +202,6 @@ fun CompassScreen(onBack: () -> Unit) {
             ) {
                 // Layer 1: Compass rose — rotates so North stays at top of screen
                 val nativeBlue = IsraelBlue.toArgb()
-                val nativeBrown = Color(0xFF5D4037).toArgb()
                 Canvas(modifier = Modifier.fillMaxSize().rotate(-azimuth)) {
                     val cx = size.width / 2f
                     val cy = size.height / 2f
@@ -263,7 +262,7 @@ fun CompassScreen(onBack: () -> Unit) {
                     }
 
                     // Hebrew direction labels
-                    drawContext.canvas.nativeCanvas.apply {
+                    drawIntoCanvas { canvas ->
                         val boldPaint = android.graphics.Paint().apply {
                             isAntiAlias = true
                             textSize = r * 0.16f
@@ -275,13 +274,13 @@ fun CompassScreen(onBack: () -> Unit) {
 
                         // North (צ) — red
                         boldPaint.color = NorthRed.toArgb()
-                        drawText("צ", cx, cy - lblR + textBaseOffset, boldPaint)
+                        canvas.nativeCanvas.drawText("צ", cx, cy - lblR + textBaseOffset, boldPaint)
 
                         // East (מז), South (ד), West (מע) — Israeli blue
                         boldPaint.color = nativeBlue
-                        drawText("מז", cx + lblR, cy + textBaseOffset, boldPaint)
-                        drawText("ד",  cx, cy + lblR + textBaseOffset, boldPaint)
-                        drawText("מע", cx - lblR, cy + textBaseOffset, boldPaint)
+                        canvas.nativeCanvas.drawText("מז", cx + lblR, cy + textBaseOffset, boldPaint)
+                        canvas.nativeCanvas.drawText("ד",  cx, cy + lblR + textBaseOffset, boldPaint)
+                        canvas.nativeCanvas.drawText("מע", cx - lblR, cy + textBaseOffset, boldPaint)
                     }
 
                     // North needle (red, pointing up in canvas = toward degree 0)
