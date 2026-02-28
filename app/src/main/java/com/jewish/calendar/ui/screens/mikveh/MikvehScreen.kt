@@ -530,7 +530,7 @@ private fun ActionButtonsRow(
 
 // ── Accessible Mikveh Data ─────────────────────────────────────────────
 
-private data class AccessibleMikveh(
+internal data class AccessibleMikveh(
     val city: String,
     val address: String,   // mikveh name / street
     val contact: String,   // contact name + phone(s)
@@ -538,12 +538,12 @@ private data class AccessibleMikveh(
     val wazeUrl: String = ""
 )
 
-private val MIKVEH_REGIONS = listOf(
+internal val MIKVEH_REGIONS = listOf(
     "הכל", "גוש דן", "שרון", "חיפה", "צפון", "ירושלים", "שפלה ודרום", "שומרון"
 )
 
 // Approximate city center coordinates (lat, lon)
-private val CITY_COORDS: Map<String, Pair<Double, Double>> = mapOf(
+internal val CITY_COORDS: Map<String, Pair<Double, Double>> = mapOf(
     // גוש דן
     "אור יהודה" to (32.027 to 34.858), "אזור" to (31.990 to 34.814),
     "אחיעזר" to (31.936 to 34.825), "אלעד" to (32.053 to 34.954),
@@ -625,14 +625,14 @@ private val CITY_COORDS: Map<String, Pair<Double, Double>> = mapOf(
     "קרני שומרון" to (32.176 to 35.030)
 )
 
-private fun distKm(lat1: Double, lon1: Double, lat2: Double, lon2: Double): Double {
+internal fun distKm(lat1: Double, lon1: Double, lat2: Double, lon2: Double): Double {
     val dLat = Math.toRadians(lat2 - lat1)
     val dLon = Math.toRadians(lon2 - lon1)
     val a = sin(dLat / 2).pow(2) + cos(Math.toRadians(lat1)) * cos(Math.toRadians(lat2)) * sin(dLon / 2).pow(2)
     return 6371 * 2 * atan2(sqrt(a), sqrt(1 - a))
 }
 
-private val ACCESSIBLE_MIKVEHS = listOf(
+internal val ACCESSIBLE_MIKVEHS = listOf(
     // ── גוש דן ──────────────────────────────────────────────────────────────
     AccessibleMikveh("אור יהודה", "ארבל 3", "03-5330001", "גוש דן", "https://waze.com/ul?q=ארבל 3 אור יהודה"),
     AccessibleMikveh("אור יהודה", "יוסף חיים 8", "03-5330002", "גוש דן", "https://waze.com/ul?q=יוסף חיים 8 אור יהודה"),
