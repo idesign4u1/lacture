@@ -11,7 +11,6 @@ import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -26,11 +25,11 @@ import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -69,16 +68,12 @@ private fun calcBearing(fromLat: Double, fromLon: Double): Float {
 private fun DrawScope.drawStarOfDavid(center: Offset, r: Float, color: Color, sw: Float = 4f) {
     val h = r * (sqrt(3.0) / 2.0).toFloat()
     val style = Stroke(width = sw, cap = StrokeCap.Round, join = StrokeJoin.Round)
-
-    // Triangle pointing up
     drawPath(Path().apply {
         moveTo(center.x, center.y - r)
         lineTo(center.x + h, center.y + r / 2f)
         lineTo(center.x - h, center.y + r / 2f)
         close()
     }, color, style = style)
-
-    // Triangle pointing down
     drawPath(Path().apply {
         moveTo(center.x, center.y + r)
         lineTo(center.x + h, center.y - r / 2f)
@@ -95,11 +90,11 @@ private fun DrawScope.drawStarOfDavid(center: Offset, r: Float, color: Color, sw
 fun CompassScreen(onBack: () -> Unit) {
     val context = LocalContext.current
 
-    var azimuth by remember { mutableFloatStateOf(0f) }
+    var azimuth     by remember { mutableFloatStateOf(0f) }
     var jerusBearing by remember { mutableFloatStateOf(0f) }
-    var isAligned by remember { mutableStateOf(false) }
+    var isAligned   by remember { mutableStateOf(false) }
 
-    // Fetch location for accurate bearing
+    // Accurate bearing from current GPS location
     LaunchedEffect(Unit) {
         try {
             val loc = LocationServices.getFusedLocationProviderClient(context).lastLocation.await()
@@ -107,9 +102,9 @@ fun CompassScreen(onBack: () -> Unit) {
         } catch (_: Exception) {}
     }
 
-    // Sensor registration
+    // Accelerometer + magnetometer for compass heading
     val sensorManager = remember { context.getSystemService(Context.SENSOR_SERVICE) as SensorManager }
-    val accel = remember { FloatArray(3) }
+    val accel  = remember { FloatArray(3) }
     val magnet = remember { FloatArray(3) }
     val rotMat = remember { FloatArray(9) }
     val orient = remember { FloatArray(3) }
@@ -135,27 +130,26 @@ fun CompassScreen(onBack: () -> Unit) {
         onDispose { sensorManager.unregisterListener(listener) }
     }
 
-    // Vibrate on alignment
+    // Vibrate once when aligned
     val vibrator = remember {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S)
             (context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager).defaultVibrator
         else @Suppress("DEPRECATION")
             context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
     }
-
     LaunchedEffect(azimuth) {
         val diff = abs(azimuth - jerusBearing).let { if (it > 180f) 360f - it else it }
         val aligned = diff < THRESHOLD_DEG
         if (aligned && !isAligned) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
                 vibrator.vibrate(VibrationEffect.createOneShot(500, VibrationEffect.DEFAULT_AMPLITUDE))
-            else @Suppress("DEPRECATION")
-                vibrator.vibrate(500)
+            else @Suppress("DEPRECATION") vibrator.vibrate(500)
         }
         isAligned = aligned
     }
 
     val diff = abs(azimuth - jerusBearing).let { if (it > 180f) 360f - it else it }
+    val jerusColor = if (isAligned) AlignGreen else TempleGold
 
     Scaffold(
         topBar = {
@@ -170,11 +164,7 @@ fun CompassScreen(onBack: () -> Unit) {
                 },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(
-                            Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "חזור",
-                            tint = IsraelBlue
-                        )
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "חזור", tint = IsraelBlue)
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Parchment)
@@ -191,179 +181,146 @@ fun CompassScreen(onBack: () -> Unit) {
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             // Status banner
-            StatusBanner(isAligned = isAligned, diff = diff)
+            StatusBanner(isAligned = isAligned)
 
             Spacer(Modifier.height(24.dp))
 
-            // Compass
+            // ── Compass ──────────────────────────────────────────────
             Box(
                 modifier = Modifier.size(280.dp),
                 contentAlignment = Alignment.Center
             ) {
-                // Layer 1: Compass rose — rotates so North stays at top of screen
-                val nativeBlue = IsraelBlue.toArgb()
+                // Layer 1: Compass rose geometry — rotates so North stays at top of screen
                 Canvas(modifier = Modifier.fillMaxSize().rotate(-azimuth)) {
                     val cx = size.width / 2f
                     val cy = size.height / 2f
-                    val r = min(size.width, size.height) / 2f * 0.92f
+                    val r  = min(size.width, size.height) / 2f * 0.92f
 
                     // Parchment background
                     drawCircle(color = Parchment, radius = r, center = Offset(cx, cy))
-
-                    // Outer decorative ring (Israeli blue)
-                    drawCircle(
-                        color = IsraelBlue, radius = r, center = Offset(cx, cy),
-                        style = Stroke(width = 10f)
-                    )
+                    // Outer ring — Israeli blue
+                    drawCircle(color = IsraelBlue, radius = r, center = Offset(cx, cy),
+                        style = Stroke(width = 10f))
                     // Inner gold ring
-                    drawCircle(
-                        color = TempleGold, radius = r * 0.87f, center = Offset(cx, cy),
-                        style = Stroke(width = 4f)
-                    )
-                    // Second inner ring (thinner)
-                    drawCircle(
-                        color = ParchmentDark, radius = r * 0.82f, center = Offset(cx, cy),
-                        style = Stroke(width = 1.5f)
-                    )
+                    drawCircle(color = TempleGold, radius = r * 0.87f, center = Offset(cx, cy),
+                        style = Stroke(width = 4f))
+                    // Subtle inner ring
+                    drawCircle(color = ParchmentDark, radius = r * 0.82f, center = Offset(cx, cy),
+                        style = Stroke(width = 1.5f))
 
-                    // Tick marks (degree 0 = North → canvas -90°)
+                    // Degree tick marks (canvas 0° = right; North = -90° offset)
                     for (deg in 0..350 step 5) {
                         val rad = Math.toRadians((deg - 90).toDouble())
-                        val isCard = deg % 90 == 0
+                        val isCard  = deg % 90 == 0
                         val isMajor = deg % 45 == 0
-                        val tickLen = when {
-                            isCard  -> r * 0.22f
-                            isMajor -> r * 0.13f
-                            else    -> r * 0.06f
-                        }
-                        val rOuter = r
-                        val rInner = r - tickLen
-                        val ox = cx + cos(rad).toFloat() * rOuter
-                        val oy = cy + sin(rad).toFloat() * rOuter
-                        val ix = cx + cos(rad).toFloat() * rInner
-                        val iy = cy + sin(rad).toFloat() * rInner
+                        val tickLen = when { isCard -> r * 0.22f; isMajor -> r * 0.13f; else -> r * 0.06f }
+                        val ox = cx + cos(rad).toFloat() * r
+                        val oy = cy + sin(rad).toFloat() * r
+                        val ix = cx + cos(rad).toFloat() * (r - tickLen)
+                        val iy = cy + sin(rad).toFloat() * (r - tickLen)
                         drawLine(
                             color = if (isCard) IsraelBlue else Color(0xFFBCAAA4),
-                            start = Offset(ix, iy),
-                            end = Offset(ox, oy),
+                            start = Offset(ix, iy), end = Offset(ox, oy),
                             strokeWidth = if (isCard) 5f else if (isMajor) 2.5f else 1.5f
                         )
                     }
 
                     // Small Stars of David at the 4 cardinal directions
-                    val starRadius = r * 0.68f
+                    val starR = r * 0.68f
                     listOf(0f, 90f, 180f, 270f).forEach { deg ->
                         val rad = Math.toRadians((deg - 90).toDouble())
-                        val starCenter = Offset(
-                            cx + cos(rad).toFloat() * starRadius,
-                            cy + sin(rad).toFloat() * starRadius
+                        drawStarOfDavid(
+                            Offset(cx + cos(rad).toFloat() * starR, cy + sin(rad).toFloat() * starR),
+                            r = r * 0.07f, color = TempleGold, sw = 3f
                         )
-                        drawStarOfDavid(starCenter, r = r * 0.07f, color = TempleGold, sw = 3f)
                     }
 
-                    // Hebrew direction labels
-                    drawIntoCanvas { canvas ->
-                        val boldPaint = android.graphics.Paint().apply {
-                            isAntiAlias = true
-                            textSize = r * 0.16f
-                            typeface = android.graphics.Typeface.DEFAULT_BOLD
-                            textAlign = android.graphics.Paint.Align.CENTER
-                        }
-                        val lblR = r * 0.52f
-                        val textBaseOffset = boldPaint.textSize * 0.36f
-
-                        // North (צ) — red
-                        boldPaint.color = NorthRed.toArgb()
-                        canvas.nativeCanvas.drawText("צ", cx, cy - lblR + textBaseOffset, boldPaint)
-
-                        // East (מז), South (ד), West (מע) — Israeli blue
-                        boldPaint.color = nativeBlue
-                        canvas.nativeCanvas.drawText("מז", cx + lblR, cy + textBaseOffset, boldPaint)
-                        canvas.nativeCanvas.drawText("ד",  cx, cy + lblR + textBaseOffset, boldPaint)
-                        canvas.nativeCanvas.drawText("מע", cx - lblR, cy + textBaseOffset, boldPaint)
-                    }
-
-                    // North needle (red, pointing up in canvas = toward degree 0)
-                    val northRad = Math.toRadians(-90.0)
-                    drawLine(
-                        color = NorthRed,
+                    // North needle (red, up = canvas -90°)
+                    drawLine(color = NorthRed,
                         start = Offset(cx, cy),
-                        end = Offset(
-                            cx + cos(northRad).toFloat() * r * 0.44f,
-                            cy + sin(northRad).toFloat() * r * 0.44f
-                        ),
-                        strokeWidth = 8f,
-                        cap = StrokeCap.Round
-                    )
+                        end   = Offset(cx, cy - r * 0.44f),
+                        strokeWidth = 8f, cap = StrokeCap.Round)
                     // South needle (dark gray)
-                    val southRad = Math.toRadians(90.0)
-                    drawLine(
-                        color = Color(0xFF616161),
+                    drawLine(color = Color(0xFF616161),
                         start = Offset(cx, cy),
-                        end = Offset(
-                            cx + cos(southRad).toFloat() * r * 0.30f,
-                            cy + sin(southRad).toFloat() * r * 0.30f
-                        ),
-                        strokeWidth = 6f,
-                        cap = StrokeCap.Round
-                    )
-                    // Center jewel (Star of David)
+                        end   = Offset(cx, cy + r * 0.30f),
+                        strokeWidth = 6f, cap = StrokeCap.Round)
+
+                    // Center Star of David jewel
                     drawStarOfDavid(Offset(cx, cy), r = r * 0.08f, color = TempleGold, sw = 3.5f)
                 }
 
-                // Layer 2: Jerusalem direction indicator — does NOT rotate with the compass rose
-                val jerusColor = if (isAligned) AlignGreen else TempleGold
+                // Layer 1b: Hebrew direction labels — rotate with the compass rose
+                // Labels are pure composables; no native canvas needed.
+                // Using offset from center since contentAlignment = Center applies to each child.
+                val lblOffset = 67.dp   // ≈ r * 0.52 (r ≈ 129 dp for 280 dp box)
+                Box(modifier = Modifier.size(280.dp).rotate(-azimuth)) {
+                    Text(
+                        text = "צ",
+                        modifier = Modifier.align(Alignment.TopCenter).padding(top = 22.dp),
+                        color = NorthRed, fontWeight = FontWeight.ExtraBold, fontSize = 18.sp
+                    )
+                    Text(
+                        text = "מז",
+                        modifier = Modifier.align(Alignment.CenterEnd).padding(end = 16.dp),
+                        color = IsraelBlue, fontWeight = FontWeight.Bold, fontSize = 14.sp
+                    )
+                    Text(
+                        text = "ד",
+                        modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 22.dp),
+                        color = IsraelBlue, fontWeight = FontWeight.ExtraBold, fontSize = 18.sp
+                    )
+                    Text(
+                        text = "מע",
+                        modifier = Modifier.align(Alignment.CenterStart).padding(start = 10.dp),
+                        color = IsraelBlue, fontWeight = FontWeight.Bold, fontSize = 14.sp
+                    )
+                }
+
+                // Layer 2: Jerusalem direction indicator — independent rotation
                 Canvas(modifier = Modifier.fillMaxSize().rotate(jerusBearing - azimuth)) {
                     val cx = size.width / 2f
                     val cy = size.height / 2f
-                    val r = min(size.width, size.height) / 2f * 0.92f
-
-                    // Dotted line toward Jerusalem
+                    val r  = min(size.width, size.height) / 2f * 0.92f
                     val tipY = cy - r * 0.70f
+
+                    // Dashed line from center toward Jerusalem
                     drawLine(
                         color = jerusColor,
                         start = Offset(cx, cy - r * 0.12f),
-                        end = Offset(cx, tipY + r * 0.13f),
-                        strokeWidth = 5f,
-                        cap = StrokeCap.Round,
-                        pathEffect = androidx.compose.ui.graphics.PathEffect.dashPathEffect(
-                            floatArrayOf(18f, 10f)
-                        )
+                        end   = Offset(cx, tipY + r * 0.14f),
+                        strokeWidth = 5f, cap = StrokeCap.Round,
+                        pathEffect = PathEffect.dashPathEffect(floatArrayOf(18f, 10f))
                     )
-                    // Star of David marking Jerusalem
+                    // Star of David at Jerusalem direction
                     drawStarOfDavid(Offset(cx, tipY), r = r * 0.13f, color = jerusColor, sw = 5f)
                 }
             }
 
             Spacer(Modifier.height(24.dp))
 
-            // Info chips
+            // Info chips card
             Card(
                 colors = CardDefaults.cardColors(containerColor = Parchment),
                 shape = RoundedCornerShape(16.dp)
             ) {
                 Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
+                    modifier = Modifier.fillMaxWidth().padding(16.dp),
                     horizontalArrangement = Arrangement.SpaceEvenly
                 ) {
-                    InfoChip("מצפן", "${azimuth.toInt()}°", IsraelBlue)
+                    InfoChip("מצפן",    "${azimuth.toInt()}°",      IsraelBlue)
                     VerticalDivider(modifier = Modifier.height(40.dp))
                     InfoChip("ירושלים", "${jerusBearing.toInt()}°", TempleGold)
                     VerticalDivider(modifier = Modifier.height(40.dp))
-                    InfoChip(
-                        label = "הפרש",
-                        value = "${diff.toInt()}°",
-                        color = if (isAligned) AlignGreen else Color(0xFF795548)
-                    )
+                    InfoChip("הפרש", "${diff.toInt()}°",
+                        if (isAligned) AlignGreen else Color(0xFF795548))
                 }
             }
 
             Spacer(Modifier.height(12.dp))
 
             Text(
-                text = "✡ הסמל הזהב מצביע לכיוון ירושלים · N = צ = צפון (אדום) ✡",
+                text = "✡ הכוכב הזהב מצביע לכיוון ירושלים · צ = צפון (אדום) ✡",
                 style = MaterialTheme.typography.bodySmall,
                 color = IsraelBlue.copy(alpha = 0.7f),
                 textAlign = TextAlign.Center
@@ -372,28 +329,25 @@ fun CompassScreen(onBack: () -> Unit) {
     }
 }
 
-// ── Helpers ───────────────────────────────────────────────────────────
+// ── Small helpers ─────────────────────────────────────────────────────
 
 @Composable
-private fun StatusBanner(isAligned: Boolean, diff: Float) {
+private fun StatusBanner(isAligned: Boolean) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
         color = if (isAligned) AlignGreen else IsraelBlue,
         shape = RoundedCornerShape(14.dp)
     ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 20.dp, vertical = 14.dp),
-            horizontalArrangement = Arrangement.Center,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = if (isAligned) "🙏  פונה לכיוון ירושלים!" else "סובב את הטלפון לכיוון ירושלים  ✡",
-                color = Color.White,
-                fontWeight = FontWeight.Bold,
-                fontSize = 15.sp,
-                textAlign = TextAlign.Center
-            )
-        }
+        Text(
+            text = if (isAligned) "🙏  פונה לכיוון ירושלים!" else "סובב את הטלפון לכיוון ירושלים  ✡",
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 14.dp),
+            color = Color.White,
+            fontWeight = FontWeight.Bold,
+            fontSize = 15.sp,
+            textAlign = TextAlign.Center
+        )
     }
 }
 
