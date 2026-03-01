@@ -10,13 +10,22 @@ import java.util.Calendar
 import java.util.TimeZone
 import javax.inject.Inject
 
-// ── Prayer category ────────────────────────────────────────────────────
+// ── Prayer time ────────────────────────────────────────────────────────
 
 enum class SiddurPrayerTime(val hebrewName: String, val icon: String, val hourStart: Int, val hourEnd: Int) {
     SHACHARIT("שחרית", "🌅", 5, 10),
     MINCHA("מנחה", "☀️", 11, 17),
     MAARIV("ערבית", "🌙", 18, 22),
     BEDTIME("ק\"ש המיטה", "⭐", 23, 4)
+}
+
+// ── Prayer style (nusach) ──────────────────────────────────────────────
+
+enum class NusachType(val hebrewName: String, val shortName: String, val icon: String) {
+    ASHKENAZ  ("אשכנז",        "אשכנז",  "🕍"),
+    SEPHARDI  ("ספרד",         "ספרד",   "✡️"),
+    MIZRACHI  ("עדות המזרח",  "מזרח",   "🌙"),
+    HASIDIC   ("חסידי (נוסח הארי)", "ח\"בד", "📖")
 }
 
 // ── Prayer section ─────────────────────────────────────────────────────
@@ -27,7 +36,8 @@ data class PrayerSectionData(
     val openingLine: String = "",       // Short representative line shown in list
     val sefariaRef: String? = null,     // Sefaria API ref for full biblical text
     val staticText: String = "",        // Full text for short rabbinical prayers
-    val halachicNote: String = ""       // Instruction or note
+    val halachicNote: String = "",      // Instruction or note
+    val nusachNote: String = ""         // Nusach-specific label (e.g. "נוסח ספרד בלבד")
 )
 
 // ── UI State ───────────────────────────────────────────────────────────
@@ -35,6 +45,7 @@ data class PrayerSectionData(
 data class SiddurUiState(
     val currentTime: SiddurPrayerTime = SiddurPrayerTime.SHACHARIT,
     val selectedCategory: SiddurPrayerTime = SiddurPrayerTime.SHACHARIT,
+    val selectedNusach: NusachType = NusachType.SEPHARDI,
     val selectedSection: PrayerSectionData? = null,
     val displayedText: String = "",
     val isLoadingText: Boolean = false,
@@ -63,6 +74,17 @@ class SiddurViewModel @Inject constructor(
         _uiState.update {
             it.copy(
                 selectedCategory = category,
+                selectedSection = null,
+                displayedText = "",
+                error = null
+            )
+        }
+    }
+
+    fun selectNusach(nusach: NusachType) {
+        _uiState.update {
+            it.copy(
+                selectedNusach = nusach,
                 selectedSection = null,
                 displayedText = "",
                 error = null
@@ -126,11 +148,95 @@ class SiddurViewModel @Inject constructor(
 
     // ── Prayer data ────────────────────────────────────────────────────
 
-    fun getSectionsFor(time: SiddurPrayerTime): List<PrayerSectionData> = when (time) {
-        SiddurPrayerTime.SHACHARIT -> shacharitSections
-        SiddurPrayerTime.MINCHA   -> minchaSections
-        SiddurPrayerTime.MAARIV   -> maarivSections
-        SiddurPrayerTime.BEDTIME  -> bedtimeSections
+    fun getSectionsFor(time: SiddurPrayerTime): List<PrayerSectionData> {
+        val nusach = _uiState.value.selectedNusach
+        return when (time) {
+            SiddurPrayerTime.SHACHARIT -> shacharitSections + nusachShacharitAdditions(nusach)
+            SiddurPrayerTime.MINCHA   -> minchaSections
+            SiddurPrayerTime.MAARIV   -> maarivSections + nusachMaarivAdditions(nusach)
+            SiddurPrayerTime.BEDTIME  -> bedtimeSections
+        }
+    }
+
+    // ── Nusach-specific additions ──────────────────────────────────────
+
+    private fun nusachShacharitAdditions(nusach: NusachType): List<PrayerSectionData> = when (nusach) {
+        NusachType.ASHKENAZ -> listOf(
+            PrayerSectionData(
+                id          = "ledavid_ashkenaz",
+                title       = "לְדָוִד ה׳ אוֹרִי",
+                openingLine = "ה׳ אוֹרִי וְיִשְׁעִי מִמִּי אִירָא",
+                sefariaRef  = "Psalms 27",
+                nusachNote  = "נוסח אשכנז",
+                halachicNote = "נאמר מאלול עד הושענא רבה"
+            )
+        )
+        NusachType.SEPHARDI -> listOf(
+            PrayerSectionData(
+                id          = "ana_bekoa_sep",
+                title       = "אָנָּא בְּכֹחַ",
+                openingLine = "אָנָּא בְּכֹחַ גְּדֻלַּת יְמִינְךָ",
+                staticText  = buildAnaBeKoach(),
+                nusachNote  = "נוסח ספרד",
+                halachicNote = "נאמר לפני פסוקי דזמרה"
+            )
+        )
+        NusachType.HASIDIC -> listOf(
+            PrayerSectionData(
+                id          = "ana_bekoa_hasid",
+                title       = "אָנָּא בְּכֹחַ",
+                openingLine = "אָנָּא בְּכֹחַ גְּדֻלַּת יְמִינְךָ",
+                staticText  = buildAnaBeKoach(),
+                nusachNote  = "נוסח חסידי",
+                halachicNote = "נאמר לפני פסוקי דזמרה"
+            ),
+            PrayerSectionData(
+                id          = "leshem_yichud",
+                title       = "לְשֵׁם יִחוּד",
+                openingLine = "לְשֵׁם יִחוּד קֻדְשָׁא בְּרִיךְ הוּא",
+                staticText  = buildLeshemYichud(),
+                nusachNote  = "נוסח חסידי",
+                halachicNote = "נאמר לפני כל מצווה – נוהג חסידים"
+            )
+        )
+        NusachType.MIZRACHI -> listOf(
+            PrayerSectionData(
+                id          = "bakkashot",
+                title       = "בַּקָּשׁוֹת – אדון עולם",
+                openingLine = "אֲדוֹן עוֹלָם אֲשֶׁר מָלַךְ",
+                staticText  = buildAdonOlam(),
+                nusachNote  = "עדות המזרח",
+                halachicNote = "שיר הפותח תפילת שחרית – עדות המזרח"
+            ),
+            PrayerSectionData(
+                id          = "ana_bekoa_miz",
+                title       = "אָנָּא בְּכֹחַ",
+                openingLine = "אָנָּא בְּכֹחַ גְּדֻלַּת יְמִינְךָ",
+                staticText  = buildAnaBeKoach(),
+                nusachNote  = "עדות המזרח"
+            )
+        )
+    }
+
+    private fun nusachMaarivAdditions(nusach: NusachType): List<PrayerSectionData> = when (nusach) {
+        NusachType.ASHKENAZ -> listOf(
+            PrayerSectionData(
+                id          = "hashkivenu_ashkenaz",
+                title       = "הַשְׁכִּיבֵנוּ",
+                openingLine = "הַשְׁכִּיבֵנוּ ה׳ אֱלֹהֵינוּ לְשָׁלוֹם",
+                staticText  = buildHashkivenu(ashkenaz = true),
+                nusachNote  = "נוסח אשכנז"
+            )
+        )
+        NusachType.SEPHARDI, NusachType.MIZRACHI, NusachType.HASIDIC -> listOf(
+            PrayerSectionData(
+                id          = "hashkivenu_sep",
+                title       = "הַשְׁכִּיבֵנוּ",
+                openingLine = "הַשְׁכִּיבֵנוּ ה׳ אֱלֹהֵינוּ לְשָׁלוֹם",
+                staticText  = buildHashkivenu(ashkenaz = false),
+                nusachNote  = if (nusach == NusachType.SEPHARDI) "נוסח ספרד" else if (nusach == NusachType.MIZRACHI) "עדות המזרח" else "נוסח חסידי"
+            )
+        )
     }
 
     // ── Shacharit ──────────────────────────────────────────────────────
@@ -432,4 +538,52 @@ private fun buildHamapil(): String = """
 יְהִי רָצוֹן מִלְּפָנֶיךָ ה׳ אֱלֹהַי וֵאלֹהֵי אֲבוֹתַי, שֶׁתַּשְׁכִּיבֵנִי לְשָׁלוֹם וְתַעֲמִידֵנִי לְשָׁלוֹם, וְאַל יְבַהֲלוּנִי רַעְיוֹנַי וַחֲלוֹמוֹת רָעִים.
 
 בָּרוּךְ אַתָּה ה׳ הַמֵּאִיר לְכָל הָעוֹלָם כֻּלּוֹ בִּכְבוֹדוֹ.
+""".trimIndent()
+
+private fun buildAnaBeKoach(): String = """
+אָנָּא בְּכֹחַ גְּדֻלַּת יְמִינְךָ, תַּתִּיר צְרוּרָה.
+קַבֵּל רִנַּת עַמְּךָ, שַׂגְּבֵנוּ טַהֲרֵנוּ נוֹרָא.
+נָא גִבּוֹר דּוֹרְשֵׁי יִחוּדְךָ, כְּבָבַת שָׁמְרֵם.
+בָּרְכֵם טַהֲרֵם רַחֲמֵי צִדְקָתְךָ, תָּמִיד גָּמְלֵם.
+חֲסִין קָדוֹשׁ בְּרֹב טוּבְךָ, נַהֵל עֲדָתֶךָ.
+יָחִיד גֵּאֶה לְעַמְּךָ פְּנֵה, זוֹכְרֵי קְדֻשָּׁתֶךָ.
+שַׁוְעָתֵנוּ קַבֵּל וּשְׁמַע צַעֲקָתֵנוּ, יוֹדֵעַ תַּעֲלוּמוֹת.
+
+בָּרוּךְ שֵׁם כְּבוֹד מַלְכוּתוֹ לְעוֹלָם וָעֶד.
+""".trimIndent()
+
+private fun buildLeshemYichud(): String = """
+לְשֵׁם יִחוּד קֻדְשָׁא בְּרִיךְ הוּא וּשְׁכִינְתֵּיהּ, בִּדְחִילוּ וּרְחִימוּ, וּרְחִימוּ וּדְחִילוּ, לְיַחֲדָא שֵׁם יוּ"ד הֵ"א בְּוָא"ו הֵ"א בְּיִחוּדָא שְׁלִים, בְּשֵׁם כָּל יִשְׂרָאֵל.
+
+הֲרֵינִי מְקַבֵּל עָלַי עוֹל מַלְכוּת שָׁמַיִם, וְאֶהְיֶה מְזֻמָּן לְקַיֵּם מִצְוַת בּוֹרְאִי בְּלֵב שָׁלֵם וּבְנֶפֶשׁ חֲפֵצָה.
+
+יְהִי רָצוֹן מִלְּפָנֶיךָ ה׳ אֱלֹהֵינוּ וֵאלֹהֵי אֲבוֹתֵינוּ, שֶׁתְּהֵא חֲשׁוּבָה תְּפִלָּה זוֹ לְפָנֶיךָ כְּאִלּוּ הִתְפַּלַּלְנוּ בְּכָל הַכַּוָּנָה הָרְאוּיָה.
+""".trimIndent()
+
+private fun buildAdonOlam(): String = """
+אֲדוֹן עוֹלָם אֲשֶׁר מָלַךְ, בְּטֶרֶם כָּל יְצִיר נִבְרָא.
+לְעֵת נַעֲשָׂה בְחֶפְצוֹ כֹּל, אֲזַי מֶלֶךְ שְׁמוֹ נִקְרָא.
+וְאַחֲרֵי כִּכְלוֹת הַכֹּל, לְבַדּוֹ יִמְלוֹךְ נוֹרָא.
+וְהוּא הָיָה וְהוּא הֹוֶה, וְהוּא יִהְיֶה בְּתִפְאָרָה.
+
+וְהוּא אֶחָד וְאֵין שֵׁנִי, לְהַמְשִׁיל לוֹ לְהַחְבִּירָה.
+בְּלִי רֵאשִׁית בְּלִי תַכְלִית, וְלוֹ הָעֹז וְהַמִּשְׂרָה.
+
+וְהוּא אֵלִי וְחַי גֹּאֲלִי, וְצוּר חֶבְלִי בְּעֵת צָרָה.
+וְהוּא נִסִּי וּמָנוֹס לִי, מְנָת כּוֹסִי בְּיוֹם אֶקְרָא.
+
+בְּיָדוֹ אַפְקִיד רוּחִי, בְּעֵת אִישַׁן וְאָעִירָה.
+וְעִם רוּחִי גְּוִיָּתִי, ה׳ לִי וְלֹא אִירָא.
+""".trimIndent()
+
+private fun buildHashkivenu(ashkenaz: Boolean): String = """
+הַשְׁכִּיבֵנוּ ה׳ אֱלֹהֵינוּ לְשָׁלוֹם, וְהַעֲמִידֵנוּ מַלְכֵּנוּ לְחַיִּים, וּפְרֹשׂ עָלֵינוּ סֻכַּת שְׁלוֹמֶךָ, וְתַקְּנֵנוּ בְּעֵצָה טוֹבָה מִלְּפָנֶיךָ, וְהוֹשִׁיעֵנוּ לְמַעַן שְׁמֶךָ.
+
+וְהָגֵן בַּעֲדֵנוּ, וְהָסֵר מֵעָלֵינוּ אוֹיֵב, דֶּבֶר, וְחֶרֶב, וְרָעָב, וְיָגוֹן, וְהָסֵר שָׂטָן מִלְּפָנֵינוּ וּמֵאַחֲרֵינוּ.
+
+${if (ashkenaz) "וּבְצֵל כְּנָפֶיךָ תַּסְתִּירֵנוּ, כִּי אֵל שׁוֹמְרֵנוּ וּמַצִּילֵנוּ אָתָּה, כִּי אֵל מֶלֶךְ חַנּוּן וְרַחוּם אָתָּה." else "וּבְצֵל כְּנָפֶיךָ תַּסְתִּירֵנוּ, כִּי אֵל שׁוֹמְרֵנוּ אָתָּה, כִּי אֵל מֶלֶךְ חַנּוּן וְרַחוּם אָתָּה."}
+
+וּשְׁמֹר צֵאתֵנוּ וּבוֹאֵנוּ, לְחַיִּים וּלְשָׁלוֹם, מֵעַתָּה וְעַד עוֹלָם.
+
+בָּרוּךְ אַתָּה ה׳, שׁוֹמֵר עַמּוֹ יִשְׂרָאֵל לָעַד.
 """.trimIndent()

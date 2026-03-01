@@ -14,14 +14,17 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -29,8 +32,25 @@ import com.jewish.calendar.R
 import com.jewish.calendar.model.ChatMessage
 import com.jewish.calendar.model.HALACHIC_TOPICS
 import com.jewish.calendar.model.HalachicTopic
-import com.jewish.calendar.ui.theme.*
 import com.jewish.calendar.viewmodel.HalachicBotViewModel
+
+// ── Palette ────────────────────────────────────────────────────────────
+
+private val NavyDeep     = Color(0xFF070E28)
+private val NavyMid      = Color(0xFF0D1B4E)
+private val NavyLight    = Color(0xFF102060)
+private val NavyCard     = Color(0xFF162255)
+private val NavyBubble   = Color(0xFF1A2B68)
+private val GoldAccent   = Color(0xFFD4AF37)
+private val GoldSoft     = Color(0xFFF0D060)
+private val GoldDim      = Color(0xFFAA8C28)
+private val UserBubble   = Color(0xFF1565C0)
+private val UserBubbleBright = Color(0xFF1976D2)
+private val MutedText    = Color(0xFF8AABDD)
+private val WhiteText    = Color(0xF0FFFFFF)
+private val SubtleText   = Color(0xAAFFFFFF)
+
+// ── Screen ─────────────────────────────────────────────────────────────
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -49,121 +69,128 @@ fun HalachicBotScreen(
         }
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.End,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Column(horizontalAlignment = Alignment.End) {
-                            Text(
-                                "הרב שמואל כהן",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold
-                            )
-                            Text(
-                                "שאלות הלכתיות • לעיון בלבד",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Brush.verticalGradient(listOf(NavyDeep, NavyMid, NavyLight)))
+    ) {
+        Scaffold(
+            containerColor = Color.Transparent,
+            topBar = {
+                TopAppBar(
+                    title = {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.End,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(horizontalAlignment = Alignment.End) {
+                                Text(
+                                    "הרב שמואל כהן",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = GoldAccent
+                                )
+                                Text(
+                                    "שאלות הלכתיות • לעיון בלבד",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MutedText
+                                )
+                            }
+                            Spacer(Modifier.width(10.dp))
+                            RabbiAvatar(size = 46)
                         }
-                        Spacer(Modifier.width(10.dp))
-                        // Rabbi avatar (replace res/drawable/rabbi_samuel.xml with rabbi_samuel.png 400×400px)
-                        RabbiAvatar(size = 44)
-                    }
-                },
-                actions = {
-                    IconButton(onClick = { viewModel.clearConversation() }) {
-                        Icon(Icons.Default.Delete, contentDescription = "נקה שיחה")
-                    }
-                    IconButton(onClick = onSignOut) {
-                        Icon(Icons.Default.Logout, contentDescription = "התנתקות")
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface
+                    },
+                    actions = {
+                        IconButton(onClick = { viewModel.clearConversation() }) {
+                            Icon(Icons.Default.Delete, contentDescription = "נקה שיחה", tint = MutedText)
+                        }
+                        IconButton(onClick = onSignOut) {
+                            Icon(Icons.Default.Logout, contentDescription = "התנתקות", tint = MutedText)
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = NavyDeep.copy(alpha = 0.95f)
+                    )
                 )
-            )
-        },
-        bottomBar = {
-            ChatInputBar(
-                inputText = uiState.inputText,
-                isLoading = uiState.isLoading,
-                onInputChanged = viewModel::onInputChanged,
-                onSend = {
-                    viewModel.sendMessage()
-                    keyboardController?.hide()
-                }
-            )
-        }
-    ) { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .background(MaterialTheme.colorScheme.background)
-        ) {
-            // Disclaimer banner
-            DisclaimerBanner()
-
-            // Messages list or empty state with topics
-            if (uiState.messages.isEmpty()) {
-                EmptyStateWithTopics(
-                    onTopicQuestionClick = { viewModel.sendMessage(it) }
-                )
-            } else {
-                LazyColumn(
-                    state = listState,
-                    modifier = Modifier.weight(1f),
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    items(uiState.messages) { message ->
-                        ChatBubble(message = message)
+            },
+            bottomBar = {
+                ChatInputBar(
+                    inputText = uiState.inputText,
+                    isLoading = uiState.isLoading,
+                    onInputChanged = viewModel::onInputChanged,
+                    onSend = {
+                        viewModel.sendMessage()
+                        keyboardController?.hide()
                     }
-                }
+                )
             }
+        ) { padding ->
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+            ) {
+                // Disclaimer banner
+                DisclaimerBanner()
 
-            // Error snackbar
-            uiState.error?.let { error ->
-                ErrorBanner(error = error, onDismiss = viewModel::dismissError)
+                // Messages list or empty state with topics
+                if (uiState.messages.isEmpty()) {
+                    EmptyStateWithTopics(
+                        onTopicQuestionClick = { viewModel.sendMessage(it) }
+                    )
+                } else {
+                    LazyColumn(
+                        state = listState,
+                        modifier = Modifier.weight(1f),
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 12.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        items(uiState.messages) { message ->
+                            ChatBubble(message = message)
+                        }
+                    }
+                }
+
+                // Error snackbar
+                uiState.error?.let { error ->
+                    ErrorBanner(error = error, onDismiss = viewModel::dismissError)
+                }
             }
         }
     }
-
 }
+
+// ── Disclaimer banner ──────────────────────────────────────────────────
 
 @Composable
 private fun DisclaimerBanner() {
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        color = Gold60.copy(alpha = 0.12f)
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(GoldAccent.copy(alpha = 0.10f))
+            .padding(horizontal = 14.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.End
     ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.End
-        ) {
-            Text(
-                text = "התשובות לעיון בלבד • אינן מחליפות שאלת רב",
-                style = MaterialTheme.typography.labelSmall,
-                color = Gold80,
-                textAlign = TextAlign.End,
-                modifier = Modifier.weight(1f)
-            )
-            Spacer(Modifier.width(4.dp))
-            Icon(
-                Icons.Default.Info,
-                contentDescription = null,
-                tint = Gold80,
-                modifier = Modifier.size(14.dp)
-            )
-        }
+        Text(
+            text = "התשובות לעיון בלבד • אינן מחליפות שאלת רב",
+            style = MaterialTheme.typography.labelSmall,
+            color = GoldSoft,
+            textAlign = TextAlign.End,
+            modifier = Modifier.weight(1f)
+        )
+        Spacer(Modifier.width(6.dp))
+        Icon(
+            Icons.Default.Info,
+            contentDescription = null,
+            tint = GoldDim,
+            modifier = Modifier.size(14.dp)
+        )
     }
 }
+
+// ── Empty state with topic cards ───────────────────────────────────────
 
 @Composable
 private fun EmptyStateWithTopics(onTopicQuestionClick: (String) -> Unit) {
@@ -173,80 +200,92 @@ private fun EmptyStateWithTopics(onTopicQuestionClick: (String) -> Unit) {
             .verticalScroll(rememberScrollState()),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Spacer(Modifier.height(24.dp))
-        Text("📿", fontSize = 56.sp)
-        Spacer(Modifier.height(8.dp))
-        Text(
-            text = "שאל שאלה הלכתית",
-            style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSurface
-        )
-        Text(
-            text = "בחר נושא או כתוב שאלה חופשית",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(20.dp))
 
-        // Topic grid
+        // Rabbi icon + greeting
+        RabbiAvatar(size = 72)
+        Spacer(Modifier.height(12.dp))
+        Text(
+            text = "שלום! אני הרב שמואל כהן",
+            fontSize = 20.sp,
+            fontWeight = FontWeight.Bold,
+            color = WhiteText,
+            textAlign = TextAlign.Center
+        )
+        Spacer(Modifier.height(4.dp))
+        Text(
+            text = "שאל שאלה הלכתית או בחר נושא",
+            fontSize = 14.sp,
+            color = MutedText,
+            textAlign = TextAlign.Center
+        )
+        Spacer(Modifier.height(20.dp))
+
+        // Topic cards
         HALACHIC_TOPICS.forEach { topic ->
             TopicCard(topic = topic, onQuestionClick = onTopicQuestionClick)
             Spacer(Modifier.height(8.dp))
         }
-        Spacer(Modifier.height(100.dp)) // Bottom padding for keyboard
+        Spacer(Modifier.height(100.dp))
     }
 }
 
+// ── Topic card ─────────────────────────────────────────────────────────
+
 @Composable
 private fun TopicCard(topic: HalachicTopic, onQuestionClick: (String) -> Unit) {
-    Card(
+    Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+            .padding(horizontal = 14.dp)
+            .clip(RoundedCornerShape(14.dp))
+            .background(NavyCard)
+            .border(1.dp, NavyBubble, RoundedCornerShape(14.dp))
+            .padding(14.dp)
     ) {
-        Column(modifier = Modifier.padding(12.dp)) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.End
+        ) {
+            Text(
+                text = topic.title,
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
+                color = GoldAccent
+            )
+            Spacer(Modifier.width(8.dp))
+            Text(topic.icon, fontSize = 18.sp)
+        }
+        Spacer(Modifier.height(8.dp))
+        topic.questions.forEach { question ->
+            TextButton(
+                onClick = { onQuestionClick(question) },
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End
+                contentPadding = PaddingValues(horizontal = 4.dp, vertical = 2.dp)
             ) {
                 Text(
-                    text = topic.title,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
+                    text = "← $question",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = GoldSoft.copy(alpha = 0.85f),
+                    textAlign = TextAlign.End,
+                    modifier = Modifier.fillMaxWidth()
                 )
-                Spacer(Modifier.width(8.dp))
-                Text(topic.icon, fontSize = 20.sp)
-            }
-            Spacer(Modifier.height(8.dp))
-            topic.questions.forEach { question ->
-                TextButton(
-                    onClick = { onQuestionClick(question) },
-                    modifier = Modifier.fillMaxWidth(),
-                    contentPadding = PaddingValues(horizontal = 4.dp, vertical = 2.dp)
-                ) {
-                    Text(
-                        text = "← $question",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.primary,
-                        textAlign = TextAlign.End,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
             }
         }
     }
 }
 
-// ── Rabbi avatar composable ────────────────────────────────────────────
+// ── Rabbi avatar ───────────────────────────────────────────────────────
 
 @Composable
 private fun RabbiAvatar(size: Int = 32) {
-    // To use a real photo: replace res/drawable/rabbi_samuel.xml with rabbi_samuel.png (400×400px square)
-    Box(modifier = Modifier.size(size.dp).clip(CircleShape)) {
+    Box(
+        modifier = Modifier
+            .size(size.dp)
+            .clip(CircleShape)
+            .border(2.dp, GoldAccent, CircleShape)
+    ) {
         Image(
             painter            = painterResource(R.drawable.rabbi_samuel),
             contentDescription = "הרב שמואל כהן",
@@ -262,19 +301,21 @@ private fun RabbiAvatar(size: Int = 32) {
 private fun ChatBubble(message: ChatMessage) {
     val isUser = message.isUser
 
-    // In RTL layout: Arrangement.Start = RIGHT side, Arrangement.End = LEFT side
+    // RTL layout: Arrangement.Start = RIGHT side, Arrangement.End = LEFT side
     // User messages → RIGHT (Start), Bot messages → LEFT (End)
     Row(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = if (isUser) Arrangement.Start else Arrangement.End
+        horizontalArrangement = if (isUser) Arrangement.Start else Arrangement.End,
+        verticalAlignment = Alignment.Bottom
     ) {
-        // User avatar is first (rightmost in RTL Start row)
+        // User avatar (rightmost in RTL Start row)
         if (isUser) {
             Box(
                 modifier = Modifier
-                    .size(32.dp)
+                    .size(34.dp)
                     .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.secondary),
+                    .background(UserBubble)
+                    .border(1.dp, GoldDim, CircleShape),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(Icons.Default.Person, null, tint = Color.White, modifier = Modifier.size(18.dp))
@@ -282,50 +323,80 @@ private fun ChatBubble(message: ChatMessage) {
             Spacer(Modifier.width(8.dp))
         }
 
-        Card(
-            modifier = Modifier.widthIn(max = 300.dp),
-            shape = RoundedCornerShape(
-                // In RTL: topStart = top-right, topEnd = top-left
-                // User (right side): sharp corner at right (topStart) = 4dp
-                // Bot  (left  side): sharp corner at left  (topEnd)   = 4dp
-                topStart    = if (isUser) 4.dp else 16.dp,
-                topEnd      = if (isUser) 16.dp else 4.dp,
-                bottomStart = 16.dp,
-                bottomEnd   = 16.dp
-            ),
-            colors = CardDefaults.cardColors(
-                containerColor = if (isUser) MaterialTheme.colorScheme.primary
-                                 else MaterialTheme.colorScheme.surface
-            ),
-            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        // Message bubble
+        Column(
+            modifier = Modifier.widthIn(max = 290.dp),
+            horizontalAlignment = if (isUser) Alignment.Start else Alignment.End
         ) {
-            if (message.isLoading) {
-                Row(
-                    modifier = Modifier.padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp, color = Blue60)
-                    Spacer(Modifier.width(8.dp))
-                    Text("חושב...", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+            Box(
+                modifier = Modifier
+                    .clip(
+                        RoundedCornerShape(
+                            topStart    = if (isUser) 4.dp else 18.dp,
+                            topEnd      = if (isUser) 18.dp else 4.dp,
+                            bottomStart = 18.dp,
+                            bottomEnd   = 18.dp
+                        )
+                    )
+                    .background(
+                        if (isUser)
+                            Brush.linearGradient(listOf(UserBubble, UserBubbleBright))
+                        else
+                            Brush.linearGradient(listOf(NavyCard, NavyBubble))
+                    )
+                    .border(
+                        width = 1.dp,
+                        color = if (isUser) UserBubbleBright.copy(alpha = 0.4f) else GoldAccent.copy(alpha = 0.15f),
+                        shape = RoundedCornerShape(
+                            topStart    = if (isUser) 4.dp else 18.dp,
+                            topEnd      = if (isUser) 18.dp else 4.dp,
+                            bottomStart = 18.dp,
+                            bottomEnd   = 18.dp
+                        )
+                    )
+            ) {
+                if (message.isLoading) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(16.dp),
+                            strokeWidth = 2.dp,
+                            color = GoldAccent
+                        )
+                        Spacer(Modifier.width(10.dp))
+                        Text(
+                            "חושב...",
+                            color = MutedText,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                } else {
+                    Text(
+                        text      = message.content,
+                        modifier  = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                        color     = if (isUser) Color.White else WhiteText,
+                        style     = TextStyle(
+                            fontSize      = 15.sp,
+                            textAlign     = TextAlign.End,
+                            textDirection = TextDirection.Rtl,
+                            lineHeight    = 22.sp
+                        )
+                    )
                 }
-            } else {
-                Text(
-                    text      = message.content,
-                    modifier  = Modifier.padding(12.dp),
-                    color     = if (isUser) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
-                    style     = MaterialTheme.typography.bodyMedium,
-                    textAlign = TextAlign.End
-                )
             }
         }
 
-        // Bot avatar is last (leftmost in RTL End row)
+        // Bot avatar (leftmost in RTL End row)
         if (!isUser) {
             Spacer(Modifier.width(8.dp))
-            RabbiAvatar(size = 32)
+            RabbiAvatar(size = 34)
         }
     }
 }
+
+// ── Chat input bar ─────────────────────────────────────────────────────
 
 @Composable
 private fun ChatInputBar(
@@ -335,47 +406,61 @@ private fun ChatInputBar(
     onSend: () -> Unit
 ) {
     Surface(
-        tonalElevation = 8.dp,
-        shadowElevation = 4.dp
+        color = NavyDeep.copy(alpha = 0.97f),
+        shadowElevation = 8.dp
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp)
+                .padding(horizontal = 12.dp, vertical = 10.dp)
                 .navigationBarsPadding()
                 .imePadding(),
             verticalAlignment = Alignment.Bottom
         ) {
+            // Send button (left side in RTL)
             IconButton(
                 onClick = onSend,
                 enabled = inputText.isNotBlank() && !isLoading,
                 modifier = Modifier
-                    .size(48.dp)
+                    .size(46.dp)
                     .clip(CircleShape)
                     .background(
-                        if (inputText.isNotBlank() && !isLoading) Blue60
-                        else MaterialTheme.colorScheme.surfaceVariant
+                        if (inputText.isNotBlank() && !isLoading)
+                            Brush.radialGradient(listOf(GoldAccent, GoldDim))
+                        else
+                            Brush.radialGradient(listOf(NavyCard, NavyCard))
                     )
             ) {
                 Icon(
                     if (isLoading) Icons.Default.HourglassEmpty else Icons.Default.Send,
                     contentDescription = "שלח",
-                    tint = if (inputText.isNotBlank() && !isLoading) Color.White
-                           else MaterialTheme.colorScheme.onSurfaceVariant,
+                    tint = if (inputText.isNotBlank() && !isLoading) NavyDeep else MutedText,
                     modifier = Modifier.size(20.dp)
                 )
             }
 
-            Spacer(Modifier.width(8.dp))
+            Spacer(Modifier.width(10.dp))
 
+            // Text input field
             OutlinedTextField(
                 value = inputText,
                 onValueChange = onInputChanged,
                 modifier = Modifier.weight(1f),
+                textStyle = TextStyle(
+                    fontSize      = 16.sp,
+                    color         = WhiteText,
+                    textAlign     = TextAlign.End,
+                    textDirection = TextDirection.Rtl
+                ),
                 placeholder = {
                     Text(
-                        "שאל שאלה הלכתית...",
-                        textAlign = TextAlign.End,
+                        "הקלד את שאלתך כאן...",
+                        style = TextStyle(
+                            textAlign     = TextAlign.End,
+                            textDirection = TextDirection.Rtl,
+                            fontSize      = 15.sp
+                        ),
+                        color = MutedText,
                         modifier = Modifier.fillMaxWidth()
                     )
                 },
@@ -386,34 +471,40 @@ private fun ChatInputBar(
                 keyboardActions = KeyboardActions(onSend = { onSend() }),
                 maxLines = 4,
                 shape = RoundedCornerShape(24.dp),
-                enabled = !isLoading
+                enabled = !isLoading,
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor       = GoldAccent,
+                    unfocusedBorderColor     = NavyBubble,
+                    focusedContainerColor    = NavyCard,
+                    unfocusedContainerColor  = NavyCard,
+                    cursorColor              = GoldAccent
+                )
             )
         }
     }
 }
+
+// ── Error banner ───────────────────────────────────────────────────────
 
 @Composable
 private fun ErrorBanner(error: String, onDismiss: () -> Unit) {
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        color = HolidayRed.copy(alpha = 0.1f)
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(Color(0xFF5C0000).copy(alpha = 0.7f))
+            .padding(horizontal = 12.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        Row(
-            modifier = Modifier.padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            IconButton(onClick = onDismiss, modifier = Modifier.size(24.dp)) {
-                Icon(Icons.Default.Close, contentDescription = "סגור", modifier = Modifier.size(16.dp))
-            }
-            Text(
-                text = error,
-                color = HolidayRed,
-                style = MaterialTheme.typography.bodySmall,
-                modifier = Modifier.weight(1f),
-                textAlign = TextAlign.End
-            )
+        IconButton(onClick = onDismiss, modifier = Modifier.size(28.dp)) {
+            Icon(Icons.Default.Close, contentDescription = "סגור", modifier = Modifier.size(16.dp), tint = Color.White)
         }
+        Text(
+            text = error,
+            color = Color(0xFFFF6B6B),
+            style = MaterialTheme.typography.bodySmall,
+            modifier = Modifier.weight(1f),
+            textAlign = TextAlign.End
+        )
     }
 }
-

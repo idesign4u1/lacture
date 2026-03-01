@@ -27,6 +27,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.jewish.calendar.viewmodel.NusachType
 import com.jewish.calendar.viewmodel.PrayerSectionData
 import com.jewish.calendar.viewmodel.SiddurPrayerTime
 import com.jewish.calendar.viewmodel.SiddurViewModel
@@ -51,7 +52,7 @@ fun SiddurScreen(
     viewModel: SiddurViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsState()
-    val sections = remember(state.selectedCategory) {
+    val sections = remember(state.selectedCategory, state.selectedNusach) {
         viewModel.getSectionsFor(state.selectedCategory)
     }
 
@@ -105,6 +106,12 @@ fun SiddurScreen(
             SmartSuggestionBanner(
                 suggested = state.currentTime,
                 selected  = state.selectedCategory
+            )
+
+            // Nusach (prayer style) selector
+            NusachSelector(
+                selected = state.selectedNusach,
+                onSelect = { viewModel.selectNusach(it) }
             )
 
             // Prayer category tabs
@@ -161,6 +168,61 @@ private fun SmartSuggestionBanner(suggested: SiddurPrayerTime, selected: SiddurP
             }
         }
     }
+}
+
+// ── Nusach selector ────────────────────────────────────────────────────
+
+@Composable
+private fun NusachSelector(
+    selected: NusachType,
+    onSelect: (NusachType) -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(ParchmentDark.copy(alpha = 0.6f))
+            .padding(horizontal = 12.dp, vertical = 6.dp)
+    ) {
+        Text(
+            text = "נוסח תפילה:",
+            fontSize = 11.sp,
+            color = InkLight,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.fillMaxWidth(),
+            textAlign = TextAlign.End
+        )
+        Spacer(Modifier.height(4.dp))
+        LazyRow(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            reverseLayout = true
+        ) {
+            items(NusachType.entries) { nusach ->
+                val isSelected = nusach == selected
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(if (isSelected) SiddurBlue else Color.Transparent)
+                        .border(
+                            width = 1.dp,
+                            color = if (isSelected) SiddurBlue else NoteColor.copy(alpha = 0.5f),
+                            shape = RoundedCornerShape(16.dp)
+                        )
+                        .clickable { onSelect(nusach) }
+                        .padding(horizontal = 10.dp, vertical = 5.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "${nusach.icon} ${nusach.shortName}",
+                        fontSize = 12.sp,
+                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                        color = if (isSelected) Color.White else InkBrown
+                    )
+                }
+            }
+        }
+    }
+    HorizontalDivider(color = SiddurGold.copy(alpha = 0.25f), thickness = 1.dp)
 }
 
 // ── Category tabs ──────────────────────────────────────────────────────
@@ -273,6 +335,22 @@ private fun SectionCard(section: PrayerSectionData, onClick: () -> Unit) {
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis
                     )
+                }
+                if (section.nusachNote.isNotBlank()) {
+                    Spacer(Modifier.height(3.dp))
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(SiddurGold.copy(alpha = 0.12f))
+                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                    ) {
+                        Text(
+                            text = section.nusachNote,
+                            fontSize = 10.sp,
+                            color = NoteColor,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
                 }
             }
 

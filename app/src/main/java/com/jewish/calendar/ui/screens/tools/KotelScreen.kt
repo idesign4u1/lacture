@@ -54,38 +54,33 @@ private val DarkSurface = Color(0xFF0F1E35)
 private data class KotelStream(
     val nameHe: String,
     val descHe: String,
-    val videoId: String,
+    val url: String,
     val emoji: String,
     val gradStart: Color,
     val gradEnd: Color
-) {
-    // autoplay=0: tap to play (avoids YouTube autoplay block in WebView)
-    val embedUrl: String get() =
-        "https://www.youtube.com/embed/$videoId" +
-        "?autoplay=0&controls=1&rel=0&modestbranding=1&playsinline=1&enablejsapi=1"
-}
+)
 
 private val STREAMS = listOf(
     KotelStream(
-        nameHe    = "כיכר הכותל",
-        descHe    = "שידור חי – מבט כללי על כיכר הכותל",
-        videoId   = "yAl9L9mvDzY",
+        nameHe    = "קרן הכותל",
+        descHe    = "מצלמות חי – קרן להנצחת הכותל המערבי",
+        url       = "https://english.thekotel.org/about_the_kotel/kotel_cameras/",
         emoji     = "🕍",
         gradStart = Color(0xFF0D47A1),
         gradEnd   = Color(0xFF1976D2)
     ),
     KotelStream(
-        nameHe    = "אזור התפילה",
-        descHe    = "מבט ישיר על הכותל המערבי",
-        videoId   = "QFK1-XaBnlg",
+        nameHe    = "מצלמת אייש",
+        descHe    = "שידור חי מאתר אייש הקודש",
+        url       = "https://www.aish.com/w/kotel/",
         emoji     = "🙏",
         gradStart = Color(0xFF4A0080),
         gradEnd   = Color(0xFF7B1FA2)
     ),
     KotelStream(
-        nameHe    = "זווית שלישית",
-        descHe    = "שידור נוסף – פנורמה מהכותל",
-        videoId   = "77akujLn4k8",
+        nameHe    = "יוטיוב חי",
+        descHe    = "חיפוש שידורים חיים של הכותל",
+        url       = "https://www.youtube.com/results?search_query=kotel+western+wall+live+%D7%9B%D7%95%D7%AA%D7%9C+%D7%97%D7%99",
         emoji     = "✡️",
         gradStart = Color(0xFF1B5E20),
         gradEnd   = Color(0xFF388E3C)
@@ -140,7 +135,7 @@ fun KotelScreen(onBack: () -> Unit) {
     LaunchedEffect(selectedIdx) {
         isLoading = true
         hasError  = false
-        webViewRef?.loadUrl(STREAMS[selectedIdx].embedUrl)
+        webViewRef?.loadUrl(STREAMS[selectedIdx].url)
         listState.animateScrollToItem(selectedIdx)
     }
 
@@ -197,7 +192,7 @@ fun KotelScreen(onBack: () -> Unit) {
                     IconButton(onClick = {
                         isLoading = true
                         hasError  = false
-                        webViewRef?.loadUrl(STREAMS[selectedIdx].embedUrl)
+                        webViewRef?.loadUrl(STREAMS[selectedIdx].url)
                     }) {
                         Icon(Icons.Default.Refresh, contentDescription = "רענן", tint = TempleGold)
                     }
@@ -253,7 +248,7 @@ fun KotelScreen(onBack: () -> Unit) {
                         .padding(horizontal = 10.dp, vertical = 4.dp)
                 ) {
                     Text(
-                        "▶ יוטיוב חי",
+                        "▶ שידור חי",
                         color = Color(0xFF3E2000),
                         fontWeight = FontWeight.ExtraBold,
                         fontSize = 11.sp
@@ -302,7 +297,7 @@ fun KotelScreen(onBack: () -> Unit) {
                                 }
                             }
                             webChromeClient = WebChromeClient()
-                            loadUrl(STREAMS[0].embedUrl)
+                            loadUrl(STREAMS[0].url)
                         }.also { webViewRef = it }
                     },
                     update = { webViewRef = it },
@@ -327,7 +322,7 @@ fun KotelScreen(onBack: () -> Unit) {
                             )
                             Spacer(Modifier.height(16.dp))
                             Text(
-                                "מתחבר לשידור יוטיוב...",
+                                "מתחבר לשידור חי...",
                                 color = TempleGold,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 15.sp
@@ -375,7 +370,7 @@ fun KotelScreen(onBack: () -> Unit) {
                                 onClick = {
                                     isLoading = true
                                     hasError  = false
-                                    webViewRef?.loadUrl(STREAMS[selectedIdx].embedUrl)
+                                    webViewRef?.loadUrl(STREAMS[selectedIdx].url)
                                 },
                                 border = BorderStroke(1.5.dp, TempleGold),
                                 colors = ButtonDefaults.outlinedButtonColors(contentColor = TempleGold),
