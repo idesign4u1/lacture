@@ -25,7 +25,8 @@ private val templeGold  = Color(0xFFD4AF37)
 fun ToolsScreen(
     onNavigateToCompass: () -> Unit,
     onNavigateToKotel: () -> Unit,
-    onNavigateToSiddur: () -> Unit
+    onNavigateToSiddur: () -> Unit,
+    onNavigateToTikkun: () -> Unit
 ) {
     Scaffold(
         topBar = {
@@ -82,6 +83,14 @@ fun ToolsScreen(
                 description = "תפילות שחרית, מנחה וערבית עם זיהוי חכם לפי השעה",
                 accentColor = Color(0xFF6A1B9A),
                 onClick = onNavigateToSiddur
+            )
+
+            ToolCard(
+                emoji = "📜",
+                title = "תיקון הכללי",
+                description = "עשרת המזמורים של רבי נחמן מברסלב עם מעקב התקדמות",
+                accentColor = Color(0xFF4A148C),
+                onClick = onNavigateToTikkun
             )
         }
     }
