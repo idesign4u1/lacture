@@ -26,7 +26,8 @@ fun ToolsScreen(
     onNavigateToCompass: () -> Unit,
     onNavigateToKotel: () -> Unit,
     onNavigateToSiddur: () -> Unit,
-    onNavigateToTikkun: () -> Unit
+    onNavigateToTikkun: () -> Unit,
+    onNavigateToGematria: () -> Unit
 ) {
     Scaffold(
         topBar = {
@@ -91,6 +92,14 @@ fun ToolsScreen(
                 description = "עשרת המזמורים של רבי נחמן מברסלב עם מעקב התקדמות",
                 accentColor = Color(0xFF4A148C),
                 onClick = onNavigateToTikkun
+            )
+
+            ToolCard(
+                emoji = "🔢",
+                title = "מחשבון גימטרייה",
+                description = "חשב גימטרייה וחפש מילים בעלות אותו ערך בתורה",
+                accentColor = Color(0xFF1565C0),
+                onClick = onNavigateToGematria
             )
         }
     }

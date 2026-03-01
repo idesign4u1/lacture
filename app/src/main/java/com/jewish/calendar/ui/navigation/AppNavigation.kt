@@ -34,6 +34,7 @@ import com.jewish.calendar.ui.screens.profile.ProfileScreen
 import com.jewish.calendar.ui.screens.tools.CompassScreen
 import com.jewish.calendar.ui.screens.tools.KotelScreen
 import com.jewish.calendar.ui.screens.tools.SiddurScreen
+import com.jewish.calendar.ui.screens.tools.GematriaScreen
 import com.jewish.calendar.ui.screens.tools.TikkunHaklaliScreen
 import com.jewish.calendar.ui.screens.tools.ToolsScreen
 import com.jewish.calendar.ui.screens.zmanim.ZmanimScreen
@@ -47,6 +48,7 @@ private const val ROUTE_COMPASS  = "compass"
 private const val ROUTE_KOTEL    = "kotel"
 private const val ROUTE_SIDDUR   = "siddur"
 private const val ROUTE_TIKKUN   = "tikkun"
+private const val ROUTE_GEMATRIA = "gematria"
 
 // ── Bottom-nav screens ────────────────────────────────────────────────
 
@@ -70,7 +72,7 @@ val bottomNavItems = listOf(
 )
 
 // Routes where the bottom bar should be HIDDEN (sub-screens / full-screen tools)
-private val routesWithoutBottomBar = setOf(ROUTE_COMPASS, ROUTE_KOTEL, ROUTE_SIDDUR, ROUTE_TIKKUN)
+private val routesWithoutBottomBar = setOf(ROUTE_COMPASS, ROUTE_KOTEL, ROUTE_SIDDUR, ROUTE_TIKKUN, ROUTE_GEMATRIA)
 
 // ── Root ──────────────────────────────────────────────────────────────
 
@@ -162,14 +164,16 @@ private fun MainNavigation(authViewModel: AuthViewModel, isFemale: Boolean) {
                     onNavigateToCompass = { navController.navigate(ROUTE_COMPASS) },
                     onNavigateToKotel   = { navController.navigate(ROUTE_KOTEL) },
                     onNavigateToSiddur  = { navController.navigate(ROUTE_SIDDUR) },
-                    onNavigateToTikkun  = { navController.navigate(ROUTE_TIKKUN) }
+                    onNavigateToTikkun    = { navController.navigate(ROUTE_TIKKUN) },
+                    onNavigateToGematria  = { navController.navigate(ROUTE_GEMATRIA) }
                 )
             }
             // Tool sub-screens (no bottom bar)
-            composable(ROUTE_COMPASS) { CompassScreen(onBack = { navController.popBackStack() }) }
-            composable(ROUTE_KOTEL)   { KotelScreen(onBack = { navController.popBackStack() }) }
-            composable(ROUTE_SIDDUR)  { SiddurScreen(onBack = { navController.popBackStack() }) }
-            composable(ROUTE_TIKKUN)  { TikkunHaklaliScreen(onBack = { navController.popBackStack() }) }
+            composable(ROUTE_COMPASS)  { CompassScreen(onBack = { navController.popBackStack() }) }
+            composable(ROUTE_KOTEL)    { KotelScreen(onBack = { navController.popBackStack() }) }
+            composable(ROUTE_SIDDUR)   { SiddurScreen(onBack = { navController.popBackStack() }) }
+            composable(ROUTE_TIKKUN)   { TikkunHaklaliScreen(onBack = { navController.popBackStack() }) }
+            composable(ROUTE_GEMATRIA) { GematriaScreen(onBack = { navController.popBackStack() }) }
 
             composable(Screen.Profile.route) {
                 ProfileScreen(
