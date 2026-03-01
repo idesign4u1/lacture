@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.room.Room
 import com.jewish.calendar.data.*
 import com.jewish.calendar.data.SefariaRepository
+import com.jewish.calendar.viewmodel.SpiritualTrackingRepository
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -23,7 +24,7 @@ object AppModule {
             AppDatabase::class.java,
             "yehuda_calendar_db"
         )
-            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
             .build()
     }
 
@@ -49,6 +50,10 @@ object AppModule {
 
     @Provides
     @Singleton
+    fun provideGratitudeDao(db: AppDatabase): GratitudeDao = db.gratitudeDao()
+
+    @Provides
+    @Singleton
     fun provideHebrewCalendarRepository(): HebrewCalendarRepository = HebrewCalendarRepository()
 
     @Provides
@@ -66,6 +71,11 @@ object AppModule {
     @Provides
     @Singleton
     fun provideAuthRepository(): com.jewish.calendar.data.AuthRepository = com.jewish.calendar.data.AuthRepository()
+
+    @Provides
+    @Singleton
+    fun provideSpiritualTrackingRepository(@ApplicationContext context: Context): SpiritualTrackingRepository =
+        SpiritualTrackingRepository(context)
 
     @Provides
     @Singleton

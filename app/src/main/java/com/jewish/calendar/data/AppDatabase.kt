@@ -5,6 +5,31 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.jewish.calendar.model.*
 
+// --- GratitudeEntry entity & DAO ---
+
+@Entity(tableName = "gratitude_entries")
+data class GratitudeEntry(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val dateMs: Long,
+    val content: String,
+    val linkedVerse: String = ""
+)
+
+@Dao
+interface GratitudeDao {
+    @Query("SELECT * FROM gratitude_entries ORDER BY dateMs DESC")
+    suspend fun getAll(): List<GratitudeEntry>
+
+    @Query("SELECT * FROM gratitude_entries WHERE dateMs >= :from AND dateMs < :to ORDER BY dateMs DESC")
+    suspend fun getForMonth(from: Long, to: Long): List<GratitudeEntry>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insert(entry: GratitudeEntry): Long
+
+    @Delete
+    suspend fun delete(entry: GratitudeEntry)
+}
+
 // --- CalendarEvent entity & DAO ---
 
 @Entity(tableName = "calendar_events")
@@ -145,10 +170,22 @@ val MIGRATION_3_4 = object : Migration(3, 4) {
     }
 }
 
+val MIGRATION_4_5 = object : Migration(4, 5) {
+    override fun migrate(database: SupportSQLiteDatabase) {
+        database.execSQL(
+            "CREATE TABLE IF NOT EXISTS gratitude_entries " +
+            "(id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+            "dateMs INTEGER NOT NULL, " +
+            "content TEXT NOT NULL, " +
+            "linkedVerse TEXT NOT NULL DEFAULT '')"
+        )
+    }
+}
+
 @Database(
     entities = [CycleRecord::class, CleanDayCheck::class, TevilahRecord::class,
-                CalendarEvent::class, ZmanimAlarm::class],
-    version = 4,
+                CalendarEvent::class, ZmanimAlarm::class, GratitudeEntry::class],
+    version = 5,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -157,4 +194,5 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun tevilahDao(): TevilahDao
     abstract fun calendarEventDao(): CalendarEventDao
     abstract fun zmanimAlarmDao(): ZmanimAlarmDao
+    abstract fun gratitudeDao(): GratitudeDao
 }

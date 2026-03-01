@@ -31,10 +31,19 @@ import com.jewish.calendar.ui.screens.bot.HalachicBotScreen
 import com.jewish.calendar.ui.screens.calendar.CalendarScreen
 import com.jewish.calendar.ui.screens.mikveh.MikvehScreen
 import com.jewish.calendar.ui.screens.profile.ProfileScreen
+import com.jewish.calendar.ui.screens.tools.BlessingsScreen
+import com.jewish.calendar.ui.screens.tools.ChallaScreen
 import com.jewish.calendar.ui.screens.tools.CompassScreen
-import com.jewish.calendar.ui.screens.tools.KotelScreen
-import com.jewish.calendar.ui.screens.tools.SiddurScreen
+import com.jewish.calendar.ui.screens.tools.DailyInspirationScreen
 import com.jewish.calendar.ui.screens.tools.GematriaScreen
+import com.jewish.calendar.ui.screens.tools.GratitudeJournalScreen
+import com.jewish.calendar.ui.screens.tools.KotelScreen
+import com.jewish.calendar.ui.screens.tools.OmerScreen
+import com.jewish.calendar.ui.screens.tools.PsalmsScreen
+import com.jewish.calendar.ui.screens.tools.ShalomBayitScreen
+import com.jewish.calendar.ui.screens.tools.SiddurScreen
+import com.jewish.calendar.ui.screens.tools.SpecialPrayersScreen
+import com.jewish.calendar.ui.screens.tools.SpiritualTrackingScreen
 import com.jewish.calendar.ui.screens.tools.TikkunHaklaliScreen
 import com.jewish.calendar.ui.screens.tools.ToolsScreen
 import com.jewish.calendar.ui.screens.zmanim.ZmanimScreen
@@ -42,13 +51,22 @@ import com.jewish.calendar.viewmodel.AuthViewModel
 
 // ── Routes ────────────────────────────────────────────────────────────
 
-private const val ROUTE_LOGIN    = "login"
-private const val ROUTE_REGISTER = "register"
-private const val ROUTE_COMPASS  = "compass"
-private const val ROUTE_KOTEL    = "kotel"
-private const val ROUTE_SIDDUR   = "siddur"
-private const val ROUTE_TIKKUN   = "tikkun"
-private const val ROUTE_GEMATRIA = "gematria"
+private const val ROUTE_LOGIN              = "login"
+private const val ROUTE_REGISTER           = "register"
+private const val ROUTE_COMPASS            = "compass"
+private const val ROUTE_KOTEL             = "kotel"
+private const val ROUTE_SIDDUR            = "siddur"
+private const val ROUTE_TIKKUN            = "tikkun"
+private const val ROUTE_GEMATRIA          = "gematria"
+private const val ROUTE_OMER              = "omer"
+private const val ROUTE_PSALMS            = "psalms"
+private const val ROUTE_DAILY_INSPIRATION = "daily_inspiration"
+private const val ROUTE_GRATITUDE         = "gratitude"
+private const val ROUTE_SHALOM_BAYIT      = "shalom_bayit"
+private const val ROUTE_SPECIAL_PRAYERS   = "special_prayers"
+private const val ROUTE_BLESSINGS         = "blessings"
+private const val ROUTE_CHALLA            = "challa"
+private const val ROUTE_SPIRITUAL_TRACKING = "spiritual_tracking"
 
 // ── Bottom-nav screens ────────────────────────────────────────────────
 
@@ -72,7 +90,12 @@ val bottomNavItems = listOf(
 )
 
 // Routes where the bottom bar should be HIDDEN (sub-screens / full-screen tools)
-private val routesWithoutBottomBar = setOf(ROUTE_COMPASS, ROUTE_KOTEL, ROUTE_SIDDUR, ROUTE_TIKKUN, ROUTE_GEMATRIA)
+private val routesWithoutBottomBar = setOf(
+    ROUTE_COMPASS, ROUTE_KOTEL, ROUTE_SIDDUR, ROUTE_TIKKUN, ROUTE_GEMATRIA,
+    ROUTE_OMER, ROUTE_PSALMS, ROUTE_DAILY_INSPIRATION, ROUTE_GRATITUDE,
+    ROUTE_SHALOM_BAYIT, ROUTE_SPECIAL_PRAYERS, ROUTE_BLESSINGS,
+    ROUTE_CHALLA, ROUTE_SPIRITUAL_TRACKING
+)
 
 // ── Root ──────────────────────────────────────────────────────────────
 
@@ -161,19 +184,37 @@ private fun MainNavigation(authViewModel: AuthViewModel, isFemale: Boolean) {
             // Tools hub
             composable(Screen.Tools.route) {
                 ToolsScreen(
-                    onNavigateToCompass = { navController.navigate(ROUTE_COMPASS) },
-                    onNavigateToKotel   = { navController.navigate(ROUTE_KOTEL) },
-                    onNavigateToSiddur  = { navController.navigate(ROUTE_SIDDUR) },
-                    onNavigateToTikkun    = { navController.navigate(ROUTE_TIKKUN) },
-                    onNavigateToGematria  = { navController.navigate(ROUTE_GEMATRIA) }
+                    onNavigateToCompass           = { navController.navigate(ROUTE_COMPASS) },
+                    onNavigateToKotel             = { navController.navigate(ROUTE_KOTEL) },
+                    onNavigateToSiddur            = { navController.navigate(ROUTE_SIDDUR) },
+                    onNavigateToTikkun            = { navController.navigate(ROUTE_TIKKUN) },
+                    onNavigateToGematria          = { navController.navigate(ROUTE_GEMATRIA) },
+                    onNavigateToOmer              = { navController.navigate(ROUTE_OMER) },
+                    onNavigateToPsalms            = { navController.navigate(ROUTE_PSALMS) },
+                    onNavigateToDailyInspiration  = { navController.navigate(ROUTE_DAILY_INSPIRATION) },
+                    onNavigateToGratitude         = { navController.navigate(ROUTE_GRATITUDE) },
+                    onNavigateToShalomBayit       = { navController.navigate(ROUTE_SHALOM_BAYIT) },
+                    onNavigateToSpecialPrayers    = { navController.navigate(ROUTE_SPECIAL_PRAYERS) },
+                    onNavigateToBlessings         = { navController.navigate(ROUTE_BLESSINGS) },
+                    onNavigateToChalla            = { navController.navigate(ROUTE_CHALLA) },
+                    onNavigateToSpiritualTracking = { navController.navigate(ROUTE_SPIRITUAL_TRACKING) }
                 )
             }
             // Tool sub-screens (no bottom bar)
-            composable(ROUTE_COMPASS)  { CompassScreen(onBack = { navController.popBackStack() }) }
-            composable(ROUTE_KOTEL)    { KotelScreen(onBack = { navController.popBackStack() }) }
-            composable(ROUTE_SIDDUR)   { SiddurScreen(onBack = { navController.popBackStack() }) }
-            composable(ROUTE_TIKKUN)   { TikkunHaklaliScreen(onBack = { navController.popBackStack() }) }
-            composable(ROUTE_GEMATRIA) { GematriaScreen(onBack = { navController.popBackStack() }) }
+            composable(ROUTE_COMPASS)             { CompassScreen(onBack = { navController.popBackStack() }) }
+            composable(ROUTE_KOTEL)               { KotelScreen(onBack = { navController.popBackStack() }) }
+            composable(ROUTE_SIDDUR)              { SiddurScreen(onBack = { navController.popBackStack() }) }
+            composable(ROUTE_TIKKUN)              { TikkunHaklaliScreen(onBack = { navController.popBackStack() }) }
+            composable(ROUTE_GEMATRIA)            { GematriaScreen(onBack = { navController.popBackStack() }) }
+            composable(ROUTE_OMER)                { OmerScreen(onBack = { navController.popBackStack() }) }
+            composable(ROUTE_PSALMS)              { PsalmsScreen(onBack = { navController.popBackStack() }) }
+            composable(ROUTE_DAILY_INSPIRATION)   { DailyInspirationScreen(onBack = { navController.popBackStack() }) }
+            composable(ROUTE_GRATITUDE)           { GratitudeJournalScreen(onBack = { navController.popBackStack() }) }
+            composable(ROUTE_SHALOM_BAYIT)        { ShalomBayitScreen(onBack = { navController.popBackStack() }) }
+            composable(ROUTE_SPECIAL_PRAYERS)     { SpecialPrayersScreen(onBack = { navController.popBackStack() }) }
+            composable(ROUTE_BLESSINGS)           { BlessingsScreen(onBack = { navController.popBackStack() }) }
+            composable(ROUTE_CHALLA)              { ChallaScreen(onBack = { navController.popBackStack() }) }
+            composable(ROUTE_SPIRITUAL_TRACKING)  { SpiritualTrackingScreen(onBack = { navController.popBackStack() }) }
 
             composable(Screen.Profile.route) {
                 ProfileScreen(
