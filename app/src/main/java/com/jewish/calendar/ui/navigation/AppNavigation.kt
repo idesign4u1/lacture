@@ -33,6 +33,7 @@ import com.jewish.calendar.ui.screens.mikveh.MikvehScreen
 import com.jewish.calendar.ui.screens.profile.ProfileScreen
 import com.jewish.calendar.ui.screens.tools.CompassScreen
 import com.jewish.calendar.ui.screens.tools.KotelScreen
+import com.jewish.calendar.ui.screens.tools.SiddurScreen
 import com.jewish.calendar.ui.screens.tools.ToolsScreen
 import com.jewish.calendar.ui.screens.zmanim.ZmanimScreen
 import com.jewish.calendar.viewmodel.AuthViewModel
@@ -43,6 +44,7 @@ private const val ROUTE_LOGIN    = "login"
 private const val ROUTE_REGISTER = "register"
 private const val ROUTE_COMPASS  = "compass"
 private const val ROUTE_KOTEL    = "kotel"
+private const val ROUTE_SIDDUR   = "siddur"
 
 // ── Bottom-nav screens ────────────────────────────────────────────────
 
@@ -66,7 +68,7 @@ val bottomNavItems = listOf(
 )
 
 // Routes where the bottom bar should be HIDDEN (sub-screens / full-screen tools)
-private val routesWithoutBottomBar = setOf(ROUTE_COMPASS, ROUTE_KOTEL)
+private val routesWithoutBottomBar = setOf(ROUTE_COMPASS, ROUTE_KOTEL, ROUTE_SIDDUR)
 
 // ── Root ──────────────────────────────────────────────────────────────
 
@@ -156,12 +158,14 @@ private fun MainNavigation(authViewModel: AuthViewModel, isFemale: Boolean) {
             composable(Screen.Tools.route) {
                 ToolsScreen(
                     onNavigateToCompass = { navController.navigate(ROUTE_COMPASS) },
-                    onNavigateToKotel   = { navController.navigate(ROUTE_KOTEL) }
+                    onNavigateToKotel   = { navController.navigate(ROUTE_KOTEL) },
+                    onNavigateToSiddur  = { navController.navigate(ROUTE_SIDDUR) }
                 )
             }
             // Tool sub-screens (no bottom bar)
             composable(ROUTE_COMPASS) { CompassScreen(onBack = { navController.popBackStack() }) }
             composable(ROUTE_KOTEL)   { KotelScreen(onBack = { navController.popBackStack() }) }
+            composable(ROUTE_SIDDUR)  { SiddurScreen(onBack = { navController.popBackStack() }) }
 
             composable(Screen.Profile.route) {
                 ProfileScreen(

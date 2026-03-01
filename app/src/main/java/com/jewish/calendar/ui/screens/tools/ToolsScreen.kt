@@ -8,13 +8,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronLeft
-import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -26,7 +24,8 @@ private val templeGold  = Color(0xFFD4AF37)
 @Composable
 fun ToolsScreen(
     onNavigateToCompass: () -> Unit,
-    onNavigateToKotel: () -> Unit
+    onNavigateToKotel: () -> Unit,
+    onNavigateToSiddur: () -> Unit
 ) {
     Scaffold(
         topBar = {
@@ -75,6 +74,14 @@ fun ToolsScreen(
                 description = "צפייה בשידור חי מהכותל המערבי",
                 accentColor = templeGold,
                 onClick = onNavigateToKotel
+            )
+
+            ToolCard(
+                emoji = "📖",
+                title = "סידור תפילה",
+                description = "תפילות שחרית, מנחה וערבית עם זיהוי חכם לפי השעה",
+                accentColor = Color(0xFF6A1B9A),
+                onClick = onNavigateToSiddur
             )
         }
     }
