@@ -42,64 +42,52 @@ import java.util.TimeZone
 
 // ── Palette ───────────────────────────────────────────────────────────
 
-private val IsraelBlue = Color(0xFF003E7E)
-private val TempleGold = Color(0xFFD4AF37)
-private val Parchment  = Color(0xFFF5E6C8)
-private val LiveRed    = Color(0xFFE53935)
-private val DarkBg     = Color(0xFF080F1C)
+private val IsraelBlue  = Color(0xFF003E7E)
+private val TempleGold  = Color(0xFFD4AF37)
+private val Parchment   = Color(0xFFF5E6C8)
+private val LiveRed     = Color(0xFFE53935)
+private val DarkBg      = Color(0xFF080F1C)
 private val DarkSurface = Color(0xFF0F1E35)
 
-// ── Camera definitions ────────────────────────────────────────────────
+// ── YouTube stream definitions ────────────────────────────────────────
 
-private data class KotelCamera(
+private data class KotelStream(
     val nameHe: String,
     val descHe: String,
-    val url: String,
+    val videoId: String,
     val emoji: String,
     val gradStart: Color,
     val gradEnd: Color
-)
+) {
+    val embedUrl: String get() =
+        "https://www.youtube.com/embed/$videoId" +
+        "?autoplay=1&controls=1&rel=0&modestbranding=1&playsinline=1"
+}
 
-private val CAMERAS = listOf(
-    KotelCamera(
-        nameHe = "כיכר התפילה",
-        descHe  = "תצפית מלאה על כיכר הכותל",
-        url     = "https://thekotel.org/he/kotel/cameras-prayer-plaza/",
-        emoji   = "🕍",
+private val STREAMS = listOf(
+    KotelStream(
+        nameHe    = "כיכר הכותל",
+        descHe    = "שידור חי – מבט כללי על כיכר הכותל",
+        videoId   = "yAl9L9mvDzY",
+        emoji     = "🕍",
         gradStart = Color(0xFF0D47A1),
-        gradEnd   = Color(0xFF1565C0)
+        gradEnd   = Color(0xFF1976D2)
     ),
-    KotelCamera(
-        nameHe = "קשת וילסון",
-        descHe  = "מנהרות הכותל – קשת וילסון",
-        url     = "https://thekotel.org/en/western-wall/camera-wilsons-arch/",
-        emoji   = "🏛️",
+    KotelStream(
+        nameHe    = "אזור התפילה",
+        descHe    = "מבט ישיר על הכותל המערבי",
+        videoId   = "QFK1-XaBnlg",
+        emoji     = "🙏",
+        gradStart = Color(0xFF4A0080),
+        gradEnd   = Color(0xFF7B1FA2)
+    ),
+    KotelStream(
+        nameHe    = "זווית שלישית",
+        descHe    = "שידור נוסף – פנורמה מהכותל",
+        videoId   = "77akujLn4k8",
+        emoji     = "✡️",
         gradStart = Color(0xFF1B5E20),
-        gradEnd   = Color(0xFF2E7D32)
-    ),
-    KotelCamera(
-        nameHe = "כל המצלמות",
-        descHe  = "סקירה כוללת – כל הזוויות",
-        url     = "https://thekotel.org/he/kotel/kotel_cameras/",
-        emoji   = "📸",
-        gradStart = Color(0xFF4A148C),
-        gradEnd   = Color(0xFF6A1B9A)
-    ),
-    KotelCamera(
-        nameHe = "שידור איש",
-        descHe  = "שידור חי מישיבת אור שמח",
-        url     = "https://aish.com/western-wall-page/",
-        emoji   = "✡️",
-        gradStart = Color(0xFF7B1FA2),
-        gradEnd   = Color(0xFF8E24AA)
-    ),
-    KotelCamera(
-        nameHe = "HD מלא",
-        descHe  = "שידור HD מהאולם הגדול",
-        url     = "https://simchahall.com/en/kotel-camera/",
-        emoji   = "🔴",
-        gradStart = Color(0xFF880E4F),
-        gradEnd   = Color(0xFFC62828)
+        gradEnd   = Color(0xFF388E3C)
     ),
 )
 
@@ -129,7 +117,7 @@ fun KotelScreen(onBack: () -> Unit) {
         }
     }
 
-    // ── Pulsing LIVE animation ────────────────────────────────────────
+    // ── Animations ────────────────────────────────────────────────────
     val liveTransition = rememberInfiniteTransition(label = "live")
     val liveAlpha by liveTransition.animateFloat(
         initialValue = 1f, targetValue = 0.15f,
@@ -141,20 +129,17 @@ fun KotelScreen(onBack: () -> Unit) {
         animationSpec = infiniteRepeatable(tween(650), RepeatMode.Reverse),
         label = "scale"
     )
-
-    // ── Gold shimmer on topbar ────────────────────────────────────────
     val shimmerOffset by liveTransition.animateFloat(
         initialValue = -300f, targetValue = 300f,
         animationSpec = infiniteRepeatable(tween(2200, easing = LinearEasing)),
         label = "shimmer"
     )
 
-    // ── Camera switch ─────────────────────────────────────────────────
+    // ── Stream switch ─────────────────────────────────────────────────
     LaunchedEffect(selectedIdx) {
         isLoading = true
         hasError  = false
-        webViewRef?.loadUrl(CAMERAS[selectedIdx].url)
-        // auto-scroll card into view
+        webViewRef?.loadUrl(STREAMS[selectedIdx].embedUrl)
         listState.animateScrollToItem(selectedIdx)
     }
 
@@ -164,7 +149,6 @@ fun KotelScreen(onBack: () -> Unit) {
                 title = {
                     Column(modifier = Modifier.fillMaxWidth()) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            // Pulsing live dot
                             Box(
                                 modifier = Modifier
                                     .size(11.dp)
@@ -210,9 +194,9 @@ fun KotelScreen(onBack: () -> Unit) {
                 },
                 actions = {
                     IconButton(onClick = {
-                        webViewRef?.reload()
                         isLoading = true
-                        hasError = false
+                        hasError  = false
+                        webViewRef?.loadUrl(STREAMS[selectedIdx].embedUrl)
                     }) {
                         Icon(Icons.Default.Refresh, contentDescription = "רענן", tint = TempleGold)
                     }
@@ -228,7 +212,7 @@ fun KotelScreen(onBack: () -> Unit) {
                 .padding(padding)
         ) {
 
-            // ── Currently watching chip ───────────────────────────────
+            // ── Now watching bar ──────────────────────────────────────
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -238,23 +222,23 @@ fun KotelScreen(onBack: () -> Unit) {
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(CAMERAS[selectedIdx].emoji, fontSize = 16.sp)
+                    Text(STREAMS[selectedIdx].emoji, fontSize = 16.sp)
                     Spacer(Modifier.width(8.dp))
                     Column {
                         Text(
-                            CAMERAS[selectedIdx].nameHe,
+                            STREAMS[selectedIdx].nameHe,
                             color = Color.White,
                             fontWeight = FontWeight.Bold,
                             fontSize = 13.sp
                         )
                         Text(
-                            CAMERAS[selectedIdx].descHe,
+                            STREAMS[selectedIdx].descHe,
                             color = Color.White.copy(alpha = 0.5f),
                             fontSize = 10.sp
                         )
                     }
                 }
-                // Gold Star of David badge
+                // Shimmer gold badge
                 Box(
                     modifier = Modifier
                         .clip(RoundedCornerShape(8.dp))
@@ -267,11 +251,16 @@ fun KotelScreen(onBack: () -> Unit) {
                         )
                         .padding(horizontal = 10.dp, vertical = 4.dp)
                 ) {
-                    Text("✡ שידור חי", color = Color(0xFF3E2000), fontWeight = FontWeight.ExtraBold, fontSize = 11.sp)
+                    Text(
+                        "▶ יוטיוב חי",
+                        color = Color(0xFF3E2000),
+                        fontWeight = FontWeight.ExtraBold,
+                        fontSize = 11.sp
+                    )
                 }
             }
 
-            // ── WebView ───────────────────────────────────────────────
+            // ── YouTube WebView ───────────────────────────────────────
             Box(
                 modifier = Modifier
                     .weight(1f)
@@ -286,14 +275,12 @@ fun KotelScreen(onBack: () -> Unit) {
                                 ViewGroup.LayoutParams.MATCH_PARENT
                             )
                             settings.apply {
-                                javaScriptEnabled            = true
-                                domStorageEnabled            = true
+                                javaScriptEnabled                = true
+                                domStorageEnabled                = true
                                 mediaPlaybackRequiresUserGesture = false
-                                loadWithOverviewMode         = true
-                                useWideViewPort              = true
-                                setSupportZoom(true)
-                                builtInZoomControls          = true
-                                displayZoomControls          = false
+                                loadWithOverviewMode             = true
+                                useWideViewPort                  = true
+                                setSupportZoom(false)
                             }
                             webViewClient = object : WebViewClient() {
                                 override fun onPageFinished(view: WebView?, url: String?) {
@@ -311,7 +298,7 @@ fun KotelScreen(onBack: () -> Unit) {
                                 }
                             }
                             webChromeClient = WebChromeClient()
-                            loadUrl(CAMERAS[0].url)
+                            loadUrl(STREAMS[0].embedUrl)
                         }.also { webViewRef = it }
                     },
                     update = { webViewRef = it },
@@ -327,7 +314,7 @@ fun KotelScreen(onBack: () -> Unit) {
                         contentAlignment = Alignment.Center
                     ) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text(CAMERAS[selectedIdx].emoji, fontSize = 48.sp)
+                            Text(STREAMS[selectedIdx].emoji, fontSize = 52.sp)
                             Spacer(Modifier.height(20.dp))
                             CircularProgressIndicator(
                                 color = TempleGold,
@@ -336,14 +323,14 @@ fun KotelScreen(onBack: () -> Unit) {
                             )
                             Spacer(Modifier.height(16.dp))
                             Text(
-                                "מתחבר לשידור חי...",
+                                "מתחבר לשידור יוטיוב...",
                                 color = TempleGold,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 15.sp
                             )
                             Spacer(Modifier.height(6.dp))
                             Text(
-                                CAMERAS[selectedIdx].nameHe,
+                                STREAMS[selectedIdx].nameHe,
                                 color = Color.White.copy(alpha = 0.4f),
                                 fontSize = 12.sp
                             )
@@ -374,7 +361,7 @@ fun KotelScreen(onBack: () -> Unit) {
                             )
                             Spacer(Modifier.height(8.dp))
                             Text(
-                                "נסה מצלמה אחרת מהרשימה למטה",
+                                "נסה שידור אחר מהרשימה למטה",
                                 color = Color.White.copy(alpha = 0.5f),
                                 fontSize = 13.sp,
                                 textAlign = TextAlign.Center
@@ -382,9 +369,9 @@ fun KotelScreen(onBack: () -> Unit) {
                             Spacer(Modifier.height(24.dp))
                             OutlinedButton(
                                 onClick = {
-                                    webViewRef?.reload()
                                     isLoading = true
                                     hasError  = false
+                                    webViewRef?.loadUrl(STREAMS[selectedIdx].embedUrl)
                                 },
                                 border = BorderStroke(1.5.dp, TempleGold),
                                 colors = ButtonDefaults.outlinedButtonColors(contentColor = TempleGold),
@@ -399,14 +386,13 @@ fun KotelScreen(onBack: () -> Unit) {
                 }
             }
 
-            // ── Camera selector ───────────────────────────────────────
+            // ── Stream selector ───────────────────────────────────────
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .background(DarkSurface)
                     .padding(top = 10.dp, bottom = 14.dp)
             ) {
-                // Header
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -415,13 +401,13 @@ fun KotelScreen(onBack: () -> Unit) {
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        "▼  בחר מצלמה",
+                        "▼  בחר שידור",
                         color = Color.White.copy(alpha = 0.4f),
                         fontSize = 10.sp,
                         letterSpacing = 1.5.sp
                     )
                     Text(
-                        "${selectedIdx + 1} / ${CAMERAS.size}",
+                        "${selectedIdx + 1} / ${STREAMS.size}",
                         color = TempleGold,
                         fontSize = 10.sp,
                         fontWeight = FontWeight.ExtraBold
@@ -430,15 +416,14 @@ fun KotelScreen(onBack: () -> Unit) {
 
                 Spacer(Modifier.height(6.dp))
 
-                // Camera cards
                 LazyRow(
                     state = listState,
                     contentPadding = PaddingValues(horizontal = 14.dp),
                     horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    itemsIndexed(CAMERAS) { idx, cam ->
-                        CameraCard(
-                            camera     = cam,
+                    itemsIndexed(STREAMS) { idx, stream ->
+                        StreamCard(
+                            stream     = stream,
                             isSelected = idx == selectedIdx,
                             onClick    = { selectedIdx = idx }
                         )
@@ -467,11 +452,11 @@ fun KotelScreen(onBack: () -> Unit) {
     }
 }
 
-// ── Camera card ───────────────────────────────────────────────────────
+// ── Stream card ───────────────────────────────────────────────────────
 
 @Composable
-private fun CameraCard(
-    camera: KotelCamera,
+private fun StreamCard(
+    stream: KotelStream,
     isSelected: Boolean,
     onClick: () -> Unit
 ) {
@@ -491,14 +476,12 @@ private fun CameraCard(
     Box(
         modifier = Modifier
             .scale(scale)
-            .width(140.dp)
-            .height(96.dp)
+            .width(150.dp)
+            .height(100.dp)
             .shadow(shadowElevation.dp, RoundedCornerShape(18.dp))
             .clip(RoundedCornerShape(18.dp))
             .background(
-                Brush.verticalGradient(
-                    colors = listOf(camera.gradStart, camera.gradEnd)
-                )
+                Brush.verticalGradient(listOf(stream.gradStart, stream.gradEnd))
             )
             .then(
                 if (isSelected)
@@ -509,15 +492,12 @@ private fun CameraCard(
             .clickable { onClick() }
             .padding(12.dp)
     ) {
-        // Subtle shimmer overlay when selected
         if (isSelected) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .background(
-                        Brush.verticalGradient(
-                            colors = listOf(Color.White.copy(0.10f), Color.Transparent)
-                        )
+                        Brush.verticalGradient(listOf(Color.White.copy(0.10f), Color.Transparent))
                     )
             )
         }
@@ -531,9 +511,9 @@ private fun CameraCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.Top
             ) {
-                Text(camera.emoji, fontSize = 22.sp)
+                Text(stream.emoji, fontSize = 22.sp)
                 if (isSelected) {
-                    // Active indicator
+                    // Active dot
                     Box(
                         modifier = Modifier
                             .size(8.dp)
@@ -544,7 +524,7 @@ private fun CameraCard(
 
             Column {
                 Text(
-                    camera.nameHe,
+                    stream.nameHe,
                     color = Color.White,
                     fontWeight = FontWeight.Bold,
                     fontSize = 13.sp,
@@ -553,10 +533,10 @@ private fun CameraCard(
                 )
                 Spacer(Modifier.height(2.dp))
                 Text(
-                    camera.descHe,
+                    stream.descHe,
                     color = Color.White.copy(alpha = 0.55f),
                     fontSize = 9.sp,
-                    maxLines = 1,
+                    maxLines = 2,
                     overflow = TextOverflow.Ellipsis
                 )
             }
