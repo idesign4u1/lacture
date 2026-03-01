@@ -5,7 +5,8 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.animation.*
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.grid.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -131,29 +132,37 @@ fun CalendarScreen(
                     }
                 }
             } else {
-                // ── Portrait: calendar always visible, day details in BottomSheet ──
-                val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-                val showSheet  = uiState.selectedDate != null
-
-                // Hardware/gesture back closes the sheet
-                BackHandler(enabled = showSheet) { viewModel.clearSelectedDate() }
+                // ── Portrait: calendar + always-visible day info panel ──
+                var showStudySheet by remember { mutableStateOf(false) }
+                BackHandler(enabled = showStudySheet) { showStudySheet = false }
 
                 Column(modifier = Modifier.fillMaxSize()) {
                     uiState.today?.let { TodayHebrewHeader(it, viewModel) }
                     DayOfWeekHeader()
-                    CalendarGrid(
-                        days = uiState.currentMonthDays,
-                        today = uiState.today,
+                    CalendarGridRows(
+                        days         = uiState.currentMonthDays,
+                        today        = uiState.today,
                         selectedDate = uiState.selectedDate,
-                        displayYear = uiState.displayYear,
+                        displayYear  = uiState.displayYear,
                         displayMonth = uiState.displayMonth,
-                        onDayClick = { viewModel.selectDate(it) }
+                        onDayClick   = { viewModel.selectDate(it); showStudySheet = true }
                     )
+                    HorizontalDivider()
+                    val displayDate = uiState.selectedDate ?: uiState.today
+                    if (displayDate != null) {
+                        DayInfoPanel(
+                            dateModel = displayDate,
+                            events    = uiState.selectedDayEvents,
+                            viewModel = viewModel,
+                            modifier  = Modifier.weight(1f)
+                        )
+                    }
                 }
 
-                if (showSheet) {
+                if (showStudySheet) {
+                    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
                     ModalBottomSheet(
-                        onDismissRequest = { viewModel.clearSelectedDate() },
+                        onDismissRequest = { showStudySheet = false },
                         sheetState = sheetState,
                         dragHandle = {
                             Box(
@@ -165,14 +174,20 @@ fun CalendarScreen(
                             )
                         }
                     ) {
-                        uiState.selectedDate?.let { selected ->
-                            SelectedDayDetails(
-                                dateModel = selected,
-                                events = uiState.selectedDayEvents,
-                                studyState = studyState,
-                                onStudyItemClick = { dailyStudyViewModel.openItem(it) },
-                                onStudyDialogDismiss = { dailyStudyViewModel.closeDialog() },
-                                viewModel = viewModel
+                        Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+                            Text(
+                                text       = "לימוד יומי",
+                                style      = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color      = MaterialTheme.colorScheme.primary,
+                                modifier   = Modifier.fillMaxWidth(),
+                                textAlign  = TextAlign.End
+                            )
+                            Spacer(Modifier.height(8.dp))
+                            DailyStudySection(
+                                state           = studyState,
+                                onItemClick     = { dailyStudyViewModel.openItem(it) },
+                                onDialogDismiss = { dailyStudyViewModel.closeDialog() }
                             )
                         }
                     }
@@ -339,8 +354,10 @@ private fun DayOfWeekHeader() {
     Divider()
 }
 
+// ── Plain-row grid (replaces LazyVerticalGrid for predictable height) ──
+
 @Composable
-private fun CalendarGrid(
+private fun CalendarGridRows(
     days: List<HebrewDateModel>,
     today: HebrewDateModel?,
     selectedDate: HebrewDateModel?,
@@ -350,37 +367,140 @@ private fun CalendarGrid(
 ) {
     if (days.isEmpty()) return
 
-    val firstDayCal = Calendar.getInstance().apply {
-        set(displayYear, displayMonth - 1, 1)
-    }
+    val firstDayCal = Calendar.getInstance().apply { set(displayYear, displayMonth - 1, 1) }
     val firstDayOfWeek = (firstDayCal.get(Calendar.DAY_OF_WEEK) - Calendar.SUNDAY)
-
     val todayFormatter = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
     val todayStr = todayFormatter.format(today?.gregorianDate ?: Date())
 
-    LazyVerticalGrid(
-        columns = GridCells.Fixed(7),
-        modifier = Modifier.padding(horizontal = 4.dp),
-        userScrollEnabled = false
+    val cells: List<HebrewDateModel?> = List(firstDayOfWeek) { null } + days
+    val rows = cells.chunked(7)
+
+    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp)) {
+        rows.forEach { row ->
+            Row(modifier = Modifier.fillMaxWidth()) {
+                val padded = row + List(7 - row.size) { null }
+                padded.forEach { dayModel ->
+                    Box(modifier = Modifier.weight(1f)) {
+                        if (dayModel != null) {
+                            val dateStr = todayFormatter.format(dayModel.gregorianDate)
+                            DayCell(
+                                dayModel   = dayModel,
+                                isToday    = dateStr == todayStr,
+                                isSelected = selectedDate?.let {
+                                    todayFormatter.format(it.gregorianDate) == dateStr
+                                } ?: false,
+                                onClick    = { onDayClick(dayModel) }
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// Keep old CalendarGrid for landscape (or reuse CalendarGridRows there too)
+@Composable
+private fun CalendarGrid(
+    days: List<HebrewDateModel>,
+    today: HebrewDateModel?,
+    selectedDate: HebrewDateModel?,
+    displayYear: Int,
+    displayMonth: Int,
+    onDayClick: (HebrewDateModel) -> Unit
+) = CalendarGridRows(days, today, selectedDate, displayYear, displayMonth, onDayClick)
+
+// ── Always-visible day info panel (portrait only) ────────────────────
+
+@Composable
+private fun DayInfoPanel(
+    dateModel: HebrewDateModel,
+    events: List<CalendarEvent>,
+    viewModel: CalendarViewModel,
+    modifier: Modifier = Modifier
+) {
+    val gregFormatter = SimpleDateFormat("EEEE, d בMMMM", Locale("he"))
+
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 16.dp, vertical = 8.dp)
     ) {
-        items(firstDayOfWeek) {
-            Box(modifier = Modifier.aspectRatio(1f))
+        // Date header
+        Text(
+            text       = "${gregFormatter.format(dateModel.gregorianDate)}  •  ${dateModel.hebrewDateString}",
+            style      = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.Bold,
+            color      = MaterialTheme.colorScheme.onSurface,
+            modifier   = Modifier.fillMaxWidth(),
+            textAlign  = TextAlign.End
+        )
+
+        Spacer(Modifier.height(8.dp))
+
+        // Add event button
+        FilledTonalButton(
+            onClick         = { viewModel.showAddEventDialog() },
+            modifier        = Modifier.fillMaxWidth(),
+            shape           = RoundedCornerShape(12.dp),
+            contentPadding  = PaddingValues(vertical = 10.dp)
+        ) {
+            Icon(Icons.Default.Add, null, Modifier.size(18.dp))
+            Spacer(Modifier.width(6.dp))
+            Text("הוסף אירוע", style = MaterialTheme.typography.labelLarge)
         }
 
-        items(days) { dayModel ->
-            val dateStr = todayFormatter.format(dayModel.gregorianDate)
-            val isToday = dateStr == todayStr
-            val isSelected = selectedDate?.let {
-                todayFormatter.format(it.gregorianDate) == dateStr
-            } ?: false
+        Spacer(Modifier.height(8.dp))
 
-            DayCell(
-                dayModel = dayModel,
-                isToday = isToday,
-                isSelected = isSelected,
-                onClick = { onDayClick(dayModel) }
+        // Special day info
+        if (dateModel.isShabbat) InfoChip("שבת קודש", Icons.Default.Star, ShabbatBlue)
+        dateModel.holidayName?.let {
+            InfoChip(it, Icons.Default.Celebration, if (dateModel.isFastDay) FastDayGray else HolidayRed)
+        }
+        if (dateModel.isRoshChodesh && dateModel.holidayName == null)
+            InfoChip("ראש חודש ${dateModel.hebrewMonthName}", Icons.Default.NightsStay, OmerGreen)
+        dateModel.parshaName?.let {
+            InfoChip("פרשת $it", Icons.Default.MenuBook, MaterialTheme.colorScheme.primary)
+        }
+        dateModel.omerCount?.let { count ->
+            InfoChip(viewModel.getOmerText(count), Icons.Default.Grain, OmerGreen)
+        }
+        dateModel.additionalEvents.forEach { event ->
+            val isYahrzeit = event.startsWith("יארצייט")
+            InfoChip(
+                text  = event,
+                icon  = if (isYahrzeit) Icons.Default.Person else Icons.Default.Star,
+                color = if (isYahrzeit) FastDayGray else Gold60
             )
         }
+
+        // Custom events
+        if (events.isNotEmpty()) {
+            Spacer(Modifier.height(8.dp))
+            Divider()
+            Spacer(Modifier.height(4.dp))
+            Row(
+                modifier             = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End,
+                verticalAlignment    = Alignment.CenterVertically
+            ) {
+                Text(
+                    "אירועים",
+                    style      = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    color      = MaterialTheme.colorScheme.primary
+                )
+                Spacer(Modifier.width(4.dp))
+                Icon(Icons.Default.Event, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
+            }
+            Spacer(Modifier.height(4.dp))
+            events.forEach { event ->
+                EventItem(event = event, onDelete = { viewModel.deleteEvent(event) })
+            }
+        }
+
+        Spacer(Modifier.height(8.dp))
     }
 }
 

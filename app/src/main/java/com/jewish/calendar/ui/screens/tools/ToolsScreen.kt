@@ -14,6 +14,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
@@ -191,13 +192,27 @@ fun ToolsScreen(
 
 @Composable
 private fun SectionHeader(title: String) {
-    Text(
-        text = title,
-        fontSize = 13.sp,
-        fontWeight = FontWeight.Bold,
-        color = sectionColor,
-        modifier = Modifier.padding(start = 4.dp, top = 4.dp, bottom = 2.dp)
-    )
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = 4.dp, top = 8.dp, bottom = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.End
+    ) {
+        Text(
+            text       = title.uppercase(),
+            fontSize   = 11.sp,
+            fontWeight = FontWeight.ExtraBold,
+            color      = israeliBlue,
+            letterSpacing = 1.5.sp
+        )
+        Spacer(Modifier.width(6.dp))
+        HorizontalDivider(
+            modifier  = Modifier.weight(1f),
+            thickness = 1.dp,
+            color     = israeliBlue.copy(alpha = 0.25f)
+        )
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

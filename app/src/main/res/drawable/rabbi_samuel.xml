@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Placeholder rabbi avatar. Replace with rabbi_samuel.png (400×400px, square crop) -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="200dp"
+    android:height="200dp"
+    android:viewportWidth="100"
+    android:viewportHeight="100">
+    <!-- Deep blue background -->
+    <path android:pathData="M0,0h100v100H0z" android:fillColor="#1565C0"/>
+    <!-- Coat / body -->
+    <path android:pathData="M22,100 L78,100 L75,66 C75,57 64,52 50,52 C36,52 25,57 25,66 Z"
+          android:fillColor="#0D1B4E"/>
+    <!-- White collar -->
+    <path android:pathData="M43,52 L50,62 L57,52 Z" android:fillColor="#FFFFFF"/>
+    <!-- Neck -->
+    <path android:pathData="M43,37 L57,37 L57,54 L43,54 Z" android:fillColor="#F5C5A0"/>
+    <!-- Head / face -->
+    <path android:pathData="M32,24 A18,18 0 0,0 68,24 A18,18 0 0,0 32,24"
+          android:fillColor="#F5C5A0"/>
+    <!-- White beard -->
+    <path android:pathData="M35,33 Q37,46 43,52 L57,52 Q63,46 65,33 Q57,42 50,41 Q43,42 35,33"
+          android:fillColor="#DDDDDD"/>
+    <!-- Black hat brim -->
+    <path android:pathData="M22,22 L78,22 L78,27 L22,27 Z" android:fillColor="#111111"/>
+    <!-- Hat crown -->
+    <path android:pathData="M30,6 L70,6 L70,22 L30,22 Z" android:fillColor="#111111"/>
+    <!-- Star of David (gold, small) -->
+    <path android:pathData="M50,75 L52,79 L56,79 L53,82 L54,86 L50,83 L46,86 L47,82 L44,79 L48,79 Z"
+          android:fillColor="#D4AF37"/>
+</vector>

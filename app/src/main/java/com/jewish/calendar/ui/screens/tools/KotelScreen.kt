@@ -59,9 +59,10 @@ private data class KotelStream(
     val gradStart: Color,
     val gradEnd: Color
 ) {
+    // autoplay=0: tap to play (avoids YouTube autoplay block in WebView)
     val embedUrl: String get() =
         "https://www.youtube.com/embed/$videoId" +
-        "?autoplay=1&controls=1&rel=0&modestbranding=1&playsinline=1"
+        "?autoplay=0&controls=1&rel=0&modestbranding=1&playsinline=1&enablejsapi=1"
 }
 
 private val STREAMS = listOf(
@@ -280,6 +281,9 @@ fun KotelScreen(onBack: () -> Unit) {
                                 mediaPlaybackRequiresUserGesture = false
                                 loadWithOverviewMode             = true
                                 useWideViewPort                  = true
+                                allowContentAccess               = true
+                                // Spoof mobile browser so YouTube allows embed
+                                userAgentString                  = "Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Mobile Safari/537.36"
                                 setSupportZoom(false)
                             }
                             webViewClient = object : WebViewClient() {

@@ -15,7 +15,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -23,6 +25,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.jewish.calendar.R
 import com.jewish.calendar.model.ChatMessage
 import com.jewish.calendar.model.HALACHIC_TOPICS
 import com.jewish.calendar.model.HalachicTopic
@@ -68,16 +71,8 @@ fun HalachicBotScreen(
                             )
                         }
                         Spacer(Modifier.width(10.dp))
-                        // Rabbi avatar
-                        Box(
-                            modifier = Modifier
-                                .size(44.dp)
-                                .clip(CircleShape)
-                                .background(Blue80),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text("🧔", fontSize = 22.sp)
-                        }
+                        // Rabbi avatar (replace res/drawable/rabbi_samuel.xml with rabbi_samuel.png 400×400px)
+                        RabbiAvatar(size = 44)
                     }
                 },
                 actions = {
@@ -246,24 +241,43 @@ private fun TopicCard(topic: HalachicTopic, onQuestionClick: (String) -> Unit) {
     }
 }
 
+// ── Rabbi avatar composable ────────────────────────────────────────────
+
+@Composable
+private fun RabbiAvatar(size: Int = 32) {
+    // To use a real photo: replace res/drawable/rabbi_samuel.xml with rabbi_samuel.png (400×400px square)
+    Box(modifier = Modifier.size(size.dp).clip(CircleShape)) {
+        Image(
+            painter            = painterResource(R.drawable.rabbi_samuel),
+            contentDescription = "הרב שמואל כהן",
+            contentScale       = ContentScale.Crop,
+            modifier           = Modifier.matchParentSize()
+        )
+    }
+}
+
+// ── Chat bubble ────────────────────────────────────────────────────────
+
 @Composable
 private fun ChatBubble(message: ChatMessage) {
     val isUser = message.isUser
 
+    // In RTL layout: Arrangement.Start = RIGHT side, Arrangement.End = LEFT side
+    // User messages → RIGHT (Start), Bot messages → LEFT (End)
     Row(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = if (isUser) Arrangement.End else Arrangement.Start
+        horizontalArrangement = if (isUser) Arrangement.Start else Arrangement.End
     ) {
-        if (!isUser) {
-            // Rabbi avatar
+        // User avatar is first (rightmost in RTL Start row)
+        if (isUser) {
             Box(
                 modifier = Modifier
                     .size(32.dp)
                     .clip(CircleShape)
-                    .background(Blue80),
+                    .background(MaterialTheme.colorScheme.secondary),
                 contentAlignment = Alignment.Center
             ) {
-                Text("🧔", fontSize = 16.sp)
+                Icon(Icons.Default.Person, null, tint = Color.White, modifier = Modifier.size(18.dp))
             }
             Spacer(Modifier.width(8.dp))
         }
@@ -271,10 +285,13 @@ private fun ChatBubble(message: ChatMessage) {
         Card(
             modifier = Modifier.widthIn(max = 300.dp),
             shape = RoundedCornerShape(
-                topStart = if (isUser) 16.dp else 4.dp,
-                topEnd = if (isUser) 4.dp else 16.dp,
+                // In RTL: topStart = top-right, topEnd = top-left
+                // User (right side): sharp corner at right (topStart) = 4dp
+                // Bot  (left  side): sharp corner at left  (topEnd)   = 4dp
+                topStart    = if (isUser) 4.dp else 16.dp,
+                topEnd      = if (isUser) 16.dp else 4.dp,
                 bottomStart = 16.dp,
-                bottomEnd = 16.dp
+                bottomEnd   = 16.dp
             ),
             colors = CardDefaults.cardColors(
                 containerColor = if (isUser) MaterialTheme.colorScheme.primary
@@ -287,47 +304,25 @@ private fun ChatBubble(message: ChatMessage) {
                     modifier = Modifier.padding(16.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(16.dp),
-                        strokeWidth = 2.dp,
-                        color = Blue60
-                    )
+                    CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp, color = Blue60)
                     Spacer(Modifier.width(8.dp))
-                    Text(
-                        text = "חושב...",
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        style = MaterialTheme.typography.bodySmall
-                    )
+                    Text("חושב...", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
                 }
             } else {
                 Text(
-                    text = message.content,
-                    modifier = Modifier.padding(12.dp),
-                    color = if (isUser) MaterialTheme.colorScheme.onPrimary
-                            else MaterialTheme.colorScheme.onSurface,
-                    style = MaterialTheme.typography.bodyMedium,
+                    text      = message.content,
+                    modifier  = Modifier.padding(12.dp),
+                    color     = if (isUser) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
+                    style     = MaterialTheme.typography.bodyMedium,
                     textAlign = TextAlign.End
                 )
             }
         }
 
-        if (isUser) {
+        // Bot avatar is last (leftmost in RTL End row)
+        if (!isUser) {
             Spacer(Modifier.width(8.dp))
-            // User avatar
-            Box(
-                modifier = Modifier
-                    .size(32.dp)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.secondary),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    Icons.Default.Person,
-                    contentDescription = null,
-                    tint = Color.White,
-                    modifier = Modifier.size(18.dp)
-                )
-            }
+            RabbiAvatar(size = 32)
         }
     }
 }
