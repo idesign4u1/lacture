@@ -14,20 +14,29 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.core.view.WindowCompat
 
 private val LightColorScheme = lightColorScheme(
-    primary = Blue60,
-    onPrimary = androidx.compose.ui.graphics.Color.White,
-    primaryContainer = Blue40,
-    onPrimaryContainer = Blue80,
-    secondary = Gold80,
-    onSecondary = androidx.compose.ui.graphics.Color.White,
-    secondaryContainer = Gold40,
-    onSecondaryContainer = Gold80,
-    tertiary = PurityPurpleBright,
-    background = Cream60,
-    surface = androidx.compose.ui.graphics.Color.White,
-    onBackground = androidx.compose.ui.graphics.Color(0xFF1C1B1F),
-    onSurface = androidx.compose.ui.graphics.Color(0xFF1C1B1F),
-    error = HolidayRed
+    primary              = Blue60,
+    onPrimary            = androidx.compose.ui.graphics.Color.White,
+    primaryContainer     = androidx.compose.ui.graphics.Color(0xFFD6E4FF),
+    onPrimaryContainer   = androidx.compose.ui.graphics.Color(0xFF001D45),
+    secondary            = Gold80,
+    onSecondary          = androidx.compose.ui.graphics.Color.White,
+    secondaryContainer   = androidx.compose.ui.graphics.Color(0xFFFFF0C8),
+    onSecondaryContainer = androidx.compose.ui.graphics.Color(0xFF3D2000),
+    tertiary             = PurityPurpleOnLight,
+    onTertiary           = androidx.compose.ui.graphics.Color.White,
+    tertiaryContainer    = PurityPurpleBright,
+    onTertiaryContainer  = PurityPurpleOnLight,
+    background           = androidx.compose.ui.graphics.Color(0xFFF8F8F8),
+    onBackground         = androidx.compose.ui.graphics.Color(0xFF1A1A2E),
+    surface              = androidx.compose.ui.graphics.Color.White,
+    onSurface            = androidx.compose.ui.graphics.Color(0xFF1A1A2E),
+    surfaceVariant       = androidx.compose.ui.graphics.Color(0xFFEEEEEE),
+    onSurfaceVariant     = androidx.compose.ui.graphics.Color(0xFF444466),
+    outline              = androidx.compose.ui.graphics.Color(0xFFAAAAAA),
+    error                = HolidayRed,
+    onError              = androidx.compose.ui.graphics.Color.White,
+    errorContainer       = androidx.compose.ui.graphics.Color(0xFFFFDAD6),
+    onErrorContainer     = androidx.compose.ui.graphics.Color(0xFF410002),
 )
 
 private val DarkColorScheme = darkColorScheme(
@@ -49,7 +58,7 @@ private val DarkColorScheme = darkColorScheme(
 @Composable
 fun YehudaCalendarTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
-    dynamicColor: Boolean = true,
+    dynamicColor: Boolean = false,          // disabled — keeps our custom Hebrew palette
     content: @Composable () -> Unit
 ) {
     val colorScheme = when {
@@ -58,7 +67,7 @@ fun YehudaCalendarTheme(
             if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
         }
         darkTheme -> DarkColorScheme
-        else -> LightColorScheme
+        else      -> LightColorScheme
     }
 
     val view = LocalView.current
