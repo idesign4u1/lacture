@@ -1,6 +1,7 @@
 package com.jewish.calendar.ui.screens.calendar
 
 import android.content.res.Configuration
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.*
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
@@ -130,7 +131,13 @@ fun CalendarScreen(
                     }
                 }
             } else {
-                // ── Portrait: stacked layout ─────────────────────────────────
+                // ── Portrait: calendar always visible, day details in BottomSheet ──
+                val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+                val showSheet  = uiState.selectedDate != null
+
+                // Hardware/gesture back closes the sheet
+                BackHandler(enabled = showSheet) { viewModel.clearSelectedDate() }
+
                 Column(modifier = Modifier.fillMaxSize()) {
                     uiState.today?.let { TodayHebrewHeader(it, viewModel) }
                     DayOfWeekHeader()
@@ -142,15 +149,32 @@ fun CalendarScreen(
                         displayMonth = uiState.displayMonth,
                         onDayClick = { viewModel.selectDate(it) }
                     )
-                    uiState.selectedDate?.let { selected ->
-                        SelectedDayDetails(
-                            dateModel = selected,
-                            events = uiState.selectedDayEvents,
-                            studyState = studyState,
-                            onStudyItemClick = { dailyStudyViewModel.openItem(it) },
-                            onStudyDialogDismiss = { dailyStudyViewModel.closeDialog() },
-                            viewModel = viewModel
-                        )
+                }
+
+                if (showSheet) {
+                    ModalBottomSheet(
+                        onDismissRequest = { viewModel.clearSelectedDate() },
+                        sheetState = sheetState,
+                        dragHandle = {
+                            Box(
+                                modifier = Modifier
+                                    .padding(vertical = 12.dp)
+                                    .size(width = 40.dp, height = 4.dp)
+                                    .clip(RoundedCornerShape(2.dp))
+                                    .background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f))
+                            )
+                        }
+                    ) {
+                        uiState.selectedDate?.let { selected ->
+                            SelectedDayDetails(
+                                dateModel = selected,
+                                events = uiState.selectedDayEvents,
+                                studyState = studyState,
+                                onStudyItemClick = { dailyStudyViewModel.openItem(it) },
+                                onStudyDialogDismiss = { dailyStudyViewModel.closeDialog() },
+                                viewModel = viewModel
+                            )
+                        }
                     }
                 }
             }

@@ -24,9 +24,11 @@ val FastDayGray = Color(0xFF616161)
 val OmerGreen = Color(0xFF2E7D32)
 
 // Mikveh / Purity
-val PurityPink = Color(0xFFF8BBD0)
-val PurityPurple = Color(0xFF7B1FA2)
-val CleanGreen = Color(0xFF43A047)
+val PurityPink          = Color(0xFFF8BBD0)
+val PurityPurple        = Color(0xFF8E24AA)   // Purple 600 — readable on light + dark
+val PurityPurpleBright  = Color(0xFFCE93D8)   // Lighter — for dark backgrounds
+val PurityPurpleOnLight = Color(0xFF4A148C)   // Maximum contrast on white
+val CleanGreen          = Color(0xFF43A047)
 
 // Dark theme
 val DarkBackground = Color(0xFF121212)

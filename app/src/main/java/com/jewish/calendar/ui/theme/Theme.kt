@@ -5,9 +5,12 @@ import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.core.view.WindowCompat
 
 private val LightColorScheme = lightColorScheme(
@@ -19,7 +22,7 @@ private val LightColorScheme = lightColorScheme(
     onSecondary = androidx.compose.ui.graphics.Color.White,
     secondaryContainer = Gold40,
     onSecondaryContainer = Gold80,
-    tertiary = PurityPurple,
+    tertiary = PurityPurpleBright,
     background = Cream60,
     surface = androidx.compose.ui.graphics.Color.White,
     onBackground = androidx.compose.ui.graphics.Color(0xFF1C1B1F),
@@ -67,9 +70,12 @@ fun YehudaCalendarTheme(
         }
     }
 
-    MaterialTheme(
-        colorScheme = colorScheme,
-        typography = Typography,
-        content = content
-    )
+    // Force RTL layout direction for the entire app (Hebrew UI)
+    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
+        MaterialTheme(
+            colorScheme = colorScheme,
+            typography = Typography,
+            content = content
+        )
+    }
 }

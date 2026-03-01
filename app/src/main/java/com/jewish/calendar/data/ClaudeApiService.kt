@@ -74,12 +74,12 @@ class ClaudeRepository @Inject constructor() {
     suspend fun askHalachicQuestion(
         question: String,
         conversationHistory: List<OpenAiMessage>,
-        apiKey: String
+        apiKey: String,
+        systemPrompt: String = HALACHIC_SYSTEM_PROMPT
     ): Result<String> {
         return try {
             val messages = mutableListOf<OpenAiMessage>()
-            // OpenAI: system prompt is a message with role "system"
-            messages.add(OpenAiMessage("system", HALACHIC_SYSTEM_PROMPT))
+            messages.add(OpenAiMessage("system", systemPrompt))
             messages.addAll(conversationHistory)
             messages.add(OpenAiMessage("user", question))
 

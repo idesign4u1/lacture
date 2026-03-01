@@ -50,30 +50,33 @@ fun HalachicBotScreen(
         topBar = {
             TopAppBar(
                 title = {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Spacer(Modifier.width(8.dp))
-                        Column {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.End,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(horizontalAlignment = Alignment.End) {
                             Text(
-                                "הרב AI",
-                                style = MaterialTheme.typography.titleLarge,
+                                "הרב שמואל כהן",
+                                style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold
                             )
                             Text(
-                                "שאלות הלכתיות",
+                                "שאלות הלכתיות • לעיון בלבד",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
-                        Spacer(Modifier.width(8.dp))
-                        // AI avatar
+                        Spacer(Modifier.width(10.dp))
+                        // Rabbi avatar
                         Box(
                             modifier = Modifier
-                                .size(40.dp)
+                                .size(44.dp)
                                 .clip(CircleShape)
-                                .background(Blue60),
+                                .background(Blue80),
                             contentAlignment = Alignment.Center
                         ) {
-                            Text("📿", fontSize = 20.sp)
+                            Text("🧔", fontSize = 22.sp)
                         }
                     }
                 },
@@ -252,15 +255,15 @@ private fun ChatBubble(message: ChatMessage) {
         horizontalArrangement = if (isUser) Arrangement.End else Arrangement.Start
     ) {
         if (!isUser) {
-            // Bot avatar
+            // Rabbi avatar
             Box(
                 modifier = Modifier
                     .size(32.dp)
                     .clip(CircleShape)
-                    .background(Blue60),
+                    .background(Blue80),
                 contentAlignment = Alignment.Center
             ) {
-                Text("📿", fontSize = 16.sp)
+                Text("🧔", fontSize = 16.sp)
             }
             Spacer(Modifier.width(8.dp))
         }

@@ -190,6 +190,15 @@ fun ProfileScreen(
                 )
             }
 
+            Spacer(Modifier.height(12.dp))
+
+            // Prayer style
+            SectionTitle("סגנון תפילה")
+            PrayerStyleSelector(
+                selected = uiState.prayerStyle,
+                onSelect = { viewModel.savePrayerStyle(it) }
+            )
+
             Spacer(Modifier.height(16.dp))
 
             // ── Save profile button ──────────────────────────────────
@@ -326,6 +335,44 @@ private fun GenderSelector(selected: String, onSelect: (String) -> Unit) {
                         color = if (selected == value) MaterialTheme.colorScheme.primary
                                else MaterialTheme.colorScheme.onSurfaceVariant)
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PrayerStyleSelector(selected: String, onSelect: (String) -> Unit) {
+    val styles = listOf(
+        "ashkenaz" to "אשכנז",
+        "sephardi" to "ספרד",
+        "mizrachi" to "מזרחי",
+        "hasidic"  to "חסידי"
+    )
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            styles.take(2).forEach { (value, label) ->
+                FilterChip(
+                    selected = selected == value,
+                    onClick = { onSelect(value) },
+                    label = { Text(label, fontSize = 13.sp) },
+                    modifier = Modifier.weight(1f)
+                )
+            }
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            styles.drop(2).forEach { (value, label) ->
+                FilterChip(
+                    selected = selected == value,
+                    onClick = { onSelect(value) },
+                    label = { Text(label, fontSize = 13.sp) },
+                    modifier = Modifier.weight(1f)
+                )
             }
         }
     }

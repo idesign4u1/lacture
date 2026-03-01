@@ -46,8 +46,10 @@ import com.jewish.calendar.ui.screens.tools.SpecialPrayersScreen
 import com.jewish.calendar.ui.screens.tools.SpiritualTrackingScreen
 import com.jewish.calendar.ui.screens.tools.TikkunHaklaliScreen
 import com.jewish.calendar.ui.screens.tools.ToolsScreen
+import com.jewish.calendar.ui.screens.auth.OnboardingDialog
 import com.jewish.calendar.ui.screens.zmanim.ZmanimScreen
 import com.jewish.calendar.viewmodel.AuthViewModel
+import com.jewish.calendar.viewmodel.OnboardingViewModel
 
 // ── Routes ────────────────────────────────────────────────────────────
 
@@ -151,6 +153,9 @@ private fun MainNavigation(authViewModel: AuthViewModel, isFemale: Boolean) {
     val permissionsState = rememberMultiplePermissionsState(requiredPermissions)
     LaunchedEffect(Unit) { permissionsState.launchMultiplePermissionRequest() }
 
+    val onboardingViewModel: OnboardingViewModel = hiltViewModel()
+    val onboardingState by onboardingViewModel.uiState.collectAsState()
+
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
@@ -224,6 +229,15 @@ private fun MainNavigation(authViewModel: AuthViewModel, isFemale: Boolean) {
             }
         }
     }
+
+    // First-launch onboarding dialog (shown on top of main content)
+    OnboardingDialog(
+        uiState       = onboardingState,
+        onSelectGender     = onboardingViewModel::selectGender,
+        onSelectPrayerStyle = onboardingViewModel::selectPrayerStyle,
+        onComplete     = onboardingViewModel::complete,
+        onSkip         = onboardingViewModel::skip
+    )
 
     if (isLandscape) {
         Row(modifier = Modifier.fillMaxSize()) {

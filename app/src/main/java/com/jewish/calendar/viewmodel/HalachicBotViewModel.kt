@@ -3,9 +3,12 @@ package com.jewish.calendar.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.jewish.calendar.BuildConfig
+import com.jewish.calendar.data.AuthRepository
 import com.jewish.calendar.data.ClaudeMessage
 import com.jewish.calendar.data.ClaudeRepository
+import com.jewish.calendar.data.UserPreferencesRepository
 import com.jewish.calendar.model.ChatMessage
+import com.jewish.calendar.model.buildHalachicSystemPrompt
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -16,41 +19,68 @@ data class BotUiState(
     val messages: List<ChatMessage> = emptyList(),
     val inputText: String = "",
     val isLoading: Boolean = false,
-    val error: String? = null
+    val error: String? = null,
+    val userName: String = "",
+    val prayerStyle: String = "ashkenaz"
 )
 
 @HiltViewModel
 class HalachicBotViewModel @Inject constructor(
-    private val claudeRepository: ClaudeRepository
+    private val claudeRepository: ClaudeRepository,
+    private val prefs: UserPreferencesRepository,
+    private val authRepository: AuthRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(BotUiState())
     val uiState: StateFlow<BotUiState> = _uiState.asStateFlow()
 
     private val conversationHistory = mutableListOf<ClaudeMessage>()
-
-    // API key is embedded in the app at build time from local.properties
     private val apiKey: String = BuildConfig.OPENAI_API_KEY
 
-    fun onInputChanged(text: String) {
-        _uiState.update { it.copy(inputText = text) }
+    init { loadUserInfo() }
+
+    private fun loadUserInfo() {
+        viewModelScope.launch {
+            val style = prefs.getPrayerStyle()
+            val user  = authRepository.fetchUserProfile()
+            val name  = user?.displayName?.trim() ?: ""
+            _uiState.update { it.copy(prayerStyle = style, userName = name) }
+            val greeting = buildGreeting(name)
+            _uiState.update {
+                it.copy(messages = listOf(
+                    ChatMessage(id = "greeting", content = greeting, isUser = false)
+                ))
+            }
+        }
     }
+
+    private fun buildGreeting(name: String): String {
+        val nameStr = if (name.isNotBlank()) name else "חבר/ה יקר/ה"
+        return "מה שלומך $nameStr 😊\n\nשמי הרב שמואל כהן.\nחשוב לציין: התשובות הן לעיון בלבד ואינן מחליפות שאלת רב.\n\nבמה אוכל לעזור?"
+    }
+
+    fun onInputChanged(text: String) = _uiState.update { it.copy(inputText = text) }
 
     fun sendMessage(question: String = _uiState.value.inputText) {
         if (question.isBlank()) return
 
-        val userMessage = ChatMessage(id = UUID.randomUUID().toString(), content = question, isUser = true)
-        val loadingMessage = ChatMessage(id = "loading", content = "", isUser = false, isLoading = true)
+        val userMsg    = ChatMessage(id = UUID.randomUUID().toString(), content = question, isUser = true)
+        val loadingMsg = ChatMessage(id = "loading", content = "", isUser = false, isLoading = true)
 
         _uiState.update {
-            it.copy(messages = it.messages + userMessage + loadingMessage, inputText = "", isLoading = true, error = null)
+            it.copy(messages = it.messages + userMsg + loadingMsg, inputText = "", isLoading = true, error = null)
         }
 
         viewModelScope.launch {
+            val systemPrompt = buildHalachicSystemPrompt(
+                prayerStyle = _uiState.value.prayerStyle,
+                userName    = _uiState.value.userName
+            )
             val result = claudeRepository.askHalachicQuestion(
                 question = question,
                 conversationHistory = conversationHistory,
-                apiKey = apiKey
+                apiKey = apiKey,
+                systemPrompt = systemPrompt
             )
 
             result.onSuccess { answer ->
@@ -67,11 +97,11 @@ class HalachicBotViewModel @Inject constructor(
                 }
             }.onFailure { error ->
                 val msg = when {
-                    error.message?.contains("401") == true -> "שגיאה: מפתח API לא תקין — פנה למפתח האפליקציה"
-                    error.message?.contains("400") == true -> "שגיאה בבקשה לשרת (400)"
-                    error.message?.contains("429") == true -> "חריגה ממגבלת בקשות — נסה שוב בעוד רגע"
+                    error.message?.contains("401") == true  -> "שגיאה: מפתח API לא תקין"
+                    error.message?.contains("400") == true  -> "שגיאה בבקשה לשרת (400)"
+                    error.message?.contains("429") == true  -> "חריגה ממגבלת בקשות — נסה שוב"
                     error.message?.contains("network") == true ||
-                    error.message?.contains("timeout") == true -> "שגיאת רשת — בדוק חיבור לאינטרנט"
+                    error.message?.contains("timeout") == true -> "שגיאת רשת — בדוק חיבור"
                     else -> "שגיאה: ${error.message}"
                 }
                 _uiState.update {
@@ -83,7 +113,11 @@ class HalachicBotViewModel @Inject constructor(
 
     fun clearConversation() {
         conversationHistory.clear()
-        _uiState.update { it.copy(messages = emptyList(), error = null) }
+        val greeting = buildGreeting(_uiState.value.userName)
+        _uiState.update { it.copy(
+            messages = listOf(ChatMessage(id = "greeting", content = greeting, isUser = false)),
+            error = null
+        )}
     }
 
     fun dismissError() = _uiState.update { it.copy(error = null) }

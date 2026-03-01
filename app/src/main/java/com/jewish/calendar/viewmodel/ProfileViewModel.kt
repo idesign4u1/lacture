@@ -6,6 +6,7 @@ import com.jewish.calendar.data.AuthRepository
 import com.jewish.calendar.data.CalendarEvent
 import com.jewish.calendar.data.CalendarEventDao
 import com.jewish.calendar.data.HebrewCalendarRepository
+import com.jewish.calendar.data.UserPreferencesRepository
 import com.jewish.calendar.model.UserModel
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
@@ -16,6 +17,7 @@ import javax.inject.Inject
 
 data class ProfileUiState(
     val user: UserModel? = null,
+    val prayerStyle: String = "ashkenaz",
     val isLoading: Boolean = false,
     val isSaving: Boolean = false,
     val saveSuccess: Boolean = false,
@@ -26,7 +28,8 @@ data class ProfileUiState(
 class ProfileViewModel @Inject constructor(
     private val authRepository: AuthRepository,
     private val calendarRepository: HebrewCalendarRepository,
-    private val eventDao: CalendarEventDao
+    private val eventDao: CalendarEventDao,
+    private val prefs: UserPreferencesRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ProfileUiState(isLoading = true))
@@ -34,8 +37,16 @@ class ProfileViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
-            val user = authRepository.fetchUserProfile()
-            _uiState.update { it.copy(user = user, isLoading = false) }
+            val user  = authRepository.fetchUserProfile()
+            val style = prefs.getPrayerStyle()
+            _uiState.update { it.copy(user = user, prayerStyle = style, isLoading = false) }
+        }
+    }
+
+    fun savePrayerStyle(style: String) {
+        viewModelScope.launch {
+            prefs.savePrayerStyle(style)
+            _uiState.update { it.copy(prayerStyle = style) }
         }
     }
 

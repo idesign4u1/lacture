@@ -85,6 +85,8 @@ class CalendarViewModel @Inject constructor(
         loadEventsForDate(dateModel.gregorianDate)
     }
 
+    fun clearSelectedDate() = _uiState.update { it.copy(selectedDate = null) }
+
     fun goToToday() {
         viewModelScope.launch {
             val today = calendarRepository.getTodayHebrewDate()
