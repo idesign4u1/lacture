@@ -45,6 +45,8 @@ import com.jewish.calendar.ui.screens.tools.SiddurScreen
 import com.jewish.calendar.ui.screens.tools.SpecialPrayersScreen
 import com.jewish.calendar.ui.screens.tools.SpiritualTrackingScreen
 import com.jewish.calendar.ui.screens.tools.TikkunHaklaliScreen
+import com.jewish.calendar.ui.screens.tools.TorahScreen
+import com.jewish.calendar.ui.screens.tools.MishnaScreen
 import com.jewish.calendar.ui.screens.tools.ToolsScreen
 import com.jewish.calendar.ui.screens.auth.OnboardingDialog
 import com.jewish.calendar.ui.screens.zmanim.ZmanimScreen
@@ -69,6 +71,8 @@ private const val ROUTE_SPECIAL_PRAYERS   = "special_prayers"
 private const val ROUTE_BLESSINGS         = "blessings"
 private const val ROUTE_CHALLA            = "challa"
 private const val ROUTE_SPIRITUAL_TRACKING = "spiritual_tracking"
+private const val ROUTE_TORAH              = "torah"
+private const val ROUTE_MISHNA             = "mishna"
 
 // ── Bottom-nav screens ────────────────────────────────────────────────
 
@@ -96,7 +100,7 @@ private val routesWithoutBottomBar = setOf(
     ROUTE_COMPASS, ROUTE_KOTEL, ROUTE_SIDDUR, ROUTE_TIKKUN, ROUTE_GEMATRIA,
     ROUTE_OMER, ROUTE_PSALMS, ROUTE_DAILY_INSPIRATION, ROUTE_GRATITUDE,
     ROUTE_SHALOM_BAYIT, ROUTE_SPECIAL_PRAYERS, ROUTE_BLESSINGS,
-    ROUTE_CHALLA, ROUTE_SPIRITUAL_TRACKING
+    ROUTE_CHALLA, ROUTE_SPIRITUAL_TRACKING, ROUTE_TORAH, ROUTE_MISHNA
 )
 
 // ── Root ──────────────────────────────────────────────────────────────
@@ -202,7 +206,9 @@ private fun MainNavigation(authViewModel: AuthViewModel, isFemale: Boolean) {
                     onNavigateToSpecialPrayers    = { navController.navigate(ROUTE_SPECIAL_PRAYERS) },
                     onNavigateToBlessings         = { navController.navigate(ROUTE_BLESSINGS) },
                     onNavigateToChalla            = { navController.navigate(ROUTE_CHALLA) },
-                    onNavigateToSpiritualTracking = { navController.navigate(ROUTE_SPIRITUAL_TRACKING) }
+                    onNavigateToSpiritualTracking = { navController.navigate(ROUTE_SPIRITUAL_TRACKING) },
+                    onNavigateToTorah             = { navController.navigate(ROUTE_TORAH) },
+                    onNavigateToMishna            = { navController.navigate(ROUTE_MISHNA) }
                 )
             }
             // Tool sub-screens (no bottom bar)
@@ -220,6 +226,8 @@ private fun MainNavigation(authViewModel: AuthViewModel, isFemale: Boolean) {
             composable(ROUTE_BLESSINGS)           { BlessingsScreen(onBack = { navController.popBackStack() }) }
             composable(ROUTE_CHALLA)              { ChallaScreen(onBack = { navController.popBackStack() }) }
             composable(ROUTE_SPIRITUAL_TRACKING)  { SpiritualTrackingScreen(onBack = { navController.popBackStack() }) }
+            composable(ROUTE_TORAH)               { TorahScreen(onBack = { navController.popBackStack() }) }
+            composable(ROUTE_MISHNA)              { MishnaScreen(onBack = { navController.popBackStack() }) }
 
             composable(Screen.Profile.route) {
                 ProfileScreen(

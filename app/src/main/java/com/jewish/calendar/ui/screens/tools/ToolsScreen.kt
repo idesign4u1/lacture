@@ -38,7 +38,9 @@ fun ToolsScreen(
     onNavigateToSpecialPrayers: () -> Unit,
     onNavigateToBlessings: () -> Unit,
     onNavigateToChalla: () -> Unit,
-    onNavigateToSpiritualTracking: () -> Unit
+    onNavigateToSpiritualTracking: () -> Unit,
+    onNavigateToTorah: () -> Unit,
+    onNavigateToMishna: () -> Unit
 ) {
     Scaffold(
         topBar = {
@@ -68,6 +70,20 @@ fun ToolsScreen(
             // ── תפילה ולימוד ──
             SectionHeader("תפילה ולימוד")
 
+            ToolCard(
+                emoji = "🕍",
+                title = "תּוֹרָה",
+                description = "חמישה חומשי תורה — בראשית, שמות, ויקרא, במדבר, דברים",
+                accentColor = Color(0xFF2E7D32),
+                onClick = onNavigateToTorah
+            )
+            ToolCard(
+                emoji = "📚",
+                title = "מִשְׁנָה",
+                description = "פרקי אבות, ברכות ועוד — לימוד יומי למעלה ולמטה",
+                accentColor = Color(0xFF6A1B9A),
+                onClick = onNavigateToMishna
+            )
             ToolCard(
                 emoji = "📖",
                 title = "סידור תפילה",

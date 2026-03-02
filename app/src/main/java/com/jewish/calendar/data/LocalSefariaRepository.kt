@@ -89,6 +89,45 @@ class LocalSefariaRepository @Inject constructor(
         else -> ""
     }
 
+    // ── Chapter-level navigation (for Torah / Psalms / Mishnah) ──────────
+
+    /**
+     * Returns the number of chapters in a file whose top-level `text` is a
+     * List<List<String>> (Torah books, Psalms, Mishnah tractates).
+     */
+    suspend fun getChapterCount(assetFile: String): Int = withContext(Dispatchers.IO) {
+        try {
+            val json = context.assets.open("sefaria/$assetFile").bufferedReader().readText()
+            val arr  = JSONObject(json).optJSONArray("text") ?: return@withContext 0
+            arr.length()
+        } catch (e: Exception) { 0 }
+    }
+
+    /**
+     * Returns all verses (strings) for the given 0-based chapter index.
+     * HTML tags are stripped before returning.
+     */
+    suspend fun getChapter(assetFile: String, chapterIndex: Int): List<String> =
+        withContext(Dispatchers.IO) {
+            try {
+                val json    = context.assets.open("sefaria/$assetFile").bufferedReader().readText()
+                val chapter = JSONObject(json)
+                    .optJSONArray("text")
+                    ?.optJSONArray(chapterIndex)
+                    ?: return@withContext emptyList()
+
+                (0 until chapter.length())
+                    .mapNotNull { i -> chapter.optString(i).takeIf { it.isNotBlank() } }
+                    .map { stripHtml(it) }
+            } catch (e: Exception) { emptyList() }
+        }
+
+    /**
+     * Returns the first verse of the given 0-based chapter (for preview/subtitle).
+     */
+    suspend fun getChapterOpening(assetFile: String, chapterIndex: Int): String =
+        getChapter(assetFile, chapterIndex).firstOrNull()?.take(80)?.trimEnd() ?: ""
+
     private fun stripHtml(html: String): String =
         html.replace(Regex("<[^>]+>"), "")
             .replace("&nbsp;", " ")

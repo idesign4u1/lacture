@@ -2,6 +2,7 @@ package com.jewish.calendar.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.jewish.calendar.data.LocalSefariaRepository
 import com.jewish.calendar.data.SefariaRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
@@ -26,7 +27,8 @@ data class PsalmsUiState(
 
 @HiltViewModel
 class PsalmsViewModel @Inject constructor(
-    private val sefariaRepository: SefariaRepository
+    private val sefariaRepository: SefariaRepository,
+    private val localRepo: LocalSefariaRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(PsalmsUiState())
@@ -49,6 +51,14 @@ class PsalmsViewModel @Inject constructor(
     fun selectPsalm(psalm: PsalmEntry) {
         _uiState.update { it.copy(selectedPsalm = psalm, text = "", isLoading = true) }
         viewModelScope.launch {
+            // Try local bundled Psalms first (offline-capable, faster)
+            val localVerses = localRepo.getChapter("psalms.json", psalm.number - 1)
+            if (localVerses.isNotEmpty()) {
+                val text = localVerses.mapIndexed { i, v -> "(${i + 1}) $v" }.joinToString("\n\n")
+                _uiState.update { it.copy(text = text, isLoading = false) }
+                return@launch
+            }
+            // Fallback: live Sefaria API
             sefariaRepository.getTextForRef("Psalms ${psalm.number}")
                 .onSuccess { t -> _uiState.update { it.copy(text = t, isLoading = false) } }
                 .onFailure { _uiState.update { it.copy(text = "", isLoading = false) } }
