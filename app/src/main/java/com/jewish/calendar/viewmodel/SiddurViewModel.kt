@@ -2,6 +2,7 @@ package com.jewish.calendar.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.jewish.calendar.data.LocalSefariaRepository
 import com.jewish.calendar.data.SefariaRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
@@ -35,6 +36,7 @@ data class PrayerSectionData(
     val title: String,
     val openingLine: String = "",       // Short representative line shown in list
     val sefariaRef: String? = null,     // Sefaria API ref for full biblical text
+    val localAsset: String? = null,     // Bundled asset: "file.json" or "file.json|Section.Key"
     val staticText: String = "",        // Full text for short rabbinical prayers
     val halachicNote: String = "",      // Instruction or note
     val nusachNote: String = ""         // Nusach-specific label (e.g. "נוסח ספרד בלבד")
@@ -57,7 +59,8 @@ data class SiddurUiState(
 
 @HiltViewModel
 class SiddurViewModel @Inject constructor(
-    private val sefariaRepository: SefariaRepository
+    private val sefariaRepository: SefariaRepository,
+    private val localSefariaRepository: LocalSefariaRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SiddurUiState())
@@ -93,24 +96,40 @@ class SiddurViewModel @Inject constructor(
     }
 
     fun selectSection(section: PrayerSectionData) {
+        val needsLoading = section.sefariaRef != null || section.localAsset != null
         _uiState.update {
             it.copy(
                 selectedSection = section,
                 displayedText = "",
                 error = null,
-                isLoadingText = section.sefariaRef != null
+                isLoadingText = needsLoading
             )
         }
-        if (section.sefariaRef != null) {
-            fetchFromSefaria(section)
-        } else {
-            _uiState.update { it.copy(displayedText = section.staticText, isLoadingText = false) }
+        when {
+            section.localAsset != null -> fetchFromLocalAsset(section)
+            section.sefariaRef != null -> fetchFromSefaria(section)
+            else -> _uiState.update { it.copy(displayedText = section.staticText, isLoadingText = false) }
         }
     }
 
     fun clearSection() = _uiState.update { it.copy(selectedSection = null, displayedText = "", error = null) }
     fun increaseFontSize() = _uiState.update { it.copy(fontSize = (it.fontSize + 2).coerceAtMost(40)) }
     fun decreaseFontSize() = _uiState.update { it.copy(fontSize = (it.fontSize - 2).coerceAtLeast(14)) }
+
+    // ── Local asset fetch ──────────────────────────────────────────────
+
+    private fun fetchFromLocalAsset(section: PrayerSectionData) {
+        viewModelScope.launch {
+            val text = localSefariaRepository.getTextFromAsset(section.localAsset!!)
+            _uiState.update {
+                it.copy(
+                    displayedText = if (text.isNotBlank()) text
+                                    else section.staticText.ifBlank { "לא ניתן לטעון את הטקסט" },
+                    isLoadingText = false
+                )
+            }
+        }
+    }
 
     // ── Sefaria fetch ──────────────────────────────────────────────────
 
@@ -151,12 +170,49 @@ class SiddurViewModel @Inject constructor(
     fun getSectionsFor(time: SiddurPrayerTime): List<PrayerSectionData> {
         val nusach = _uiState.value.selectedNusach
         return when (time) {
-            SiddurPrayerTime.SHACHARIT -> shacharitSections + nusachShacharitAdditions(nusach)
-            SiddurPrayerTime.MINCHA   -> minchaSections
-            SiddurPrayerTime.MAARIV   -> maarivSections + nusachMaarivAdditions(nusach)
+            SiddurPrayerTime.SHACHARIT -> shacharitSections + nusachShacharitAdditions(nusach) +
+                                          listOf(birkatHaMazonSection(nusach), hallelSection())
+            SiddurPrayerTime.MINCHA   -> minchaSections + listOf(birkatHaMazonSection(nusach))
+            SiddurPrayerTime.MAARIV   -> maarivSections + nusachMaarivAdditions(nusach) +
+                                          listOf(birkatHaMazonSection(nusach), kabbalatShabbatSection())
             SiddurPrayerTime.BEDTIME  -> bedtimeSections
         }
     }
+
+    // ── Bundled liturgy helpers ────────────────────────────────────────
+
+    private fun birkatHaMazonSection(nusach: NusachType): PrayerSectionData {
+        val assetFile = when (nusach) {
+            NusachType.ASHKENAZ -> "birkat_hamazon_ashkenaz.json"
+            NusachType.SEPHARDI -> "birkat_hamazon_sefard.json"
+            NusachType.MIZRACHI -> "birkat_hamazon_mizrach.json"
+            NusachType.HASIDIC  -> "birkat_hamazon_ari.json"
+        }
+        return PrayerSectionData(
+            id           = "birkat_hamazon_${nusach.name.lowercase()}",
+            title        = "ברכת המזון",
+            openingLine  = "רַבּוֹתַי נְבָרֵךְ",
+            localAsset   = "$assetFile|Birkat Hamazon",
+            halachicNote = "נאמרת לאחר אכילת לחם – מדאורייתא",
+            nusachNote   = nusach.shortName
+        )
+    }
+
+    private fun kabbalatShabbatSection() = PrayerSectionData(
+        id           = "kabbalat_shabbat",
+        title        = "קבלת שבת",
+        openingLine  = "לְכוּ נְרַנֲנָה לַיהֹוָה",
+        localAsset   = "kabbalat_shabbat.json",
+        halachicNote = "נאמרת בערב שבת לפני תפילת ערבית"
+    )
+
+    private fun hallelSection() = PrayerSectionData(
+        id           = "hallel",
+        title        = "הַלֵּל",
+        openingLine  = "הַלְלוּיָהּ הַלְלוּ עַבְדֵי ה׳",
+        localAsset   = "hallel.json",
+        halachicNote = "נאמר בר\"ח, חנוכה, סוכות, פסח ושבועות"
+    )
 
     // ── Nusach-specific additions ──────────────────────────────────────
 

@@ -3,6 +3,7 @@ package com.jewish.calendar.di
 import android.content.Context
 import androidx.room.Room
 import com.jewish.calendar.data.*
+import com.jewish.calendar.data.LocalSefariaRepository
 import com.jewish.calendar.data.SefariaRepository
 import com.jewish.calendar.viewmodel.SpiritualTrackingRepository
 import dagger.Module
@@ -67,6 +68,11 @@ object AppModule {
     @Provides
     @Singleton
     fun provideSefariaRepository(): SefariaRepository = SefariaRepository()
+
+    @Provides
+    @Singleton
+    fun provideLocalSefariaRepository(@ApplicationContext context: Context): LocalSefariaRepository =
+        LocalSefariaRepository(context)
 
     @Provides
     @Singleton
