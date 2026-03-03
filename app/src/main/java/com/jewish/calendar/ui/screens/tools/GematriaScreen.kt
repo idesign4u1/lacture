@@ -142,12 +142,44 @@ fun GematriaScreen(
                         )
                     }
 
+                    // Indexing banner
+                    if (state.isIndexing) {
+                        item {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(GoldBright.copy(alpha = 0.08f))
+                                    .border(1.dp, GoldBright.copy(alpha = 0.25f), RoundedCornerShape(12.dp))
+                                    .padding(horizontal = 14.dp, vertical = 10.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.End
+                            ) {
+                                Text(
+                                    "סורק את התורה...",
+                                    fontSize = 13.sp,
+                                    color = GoldSoft
+                                )
+                                Spacer(Modifier.width(10.dp))
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(18.dp),
+                                    color = GoldBright,
+                                    strokeWidth = 2.dp
+                                )
+                            }
+                        }
+                    }
+
                     // Results header
                     if (state.gematriaValue != null) {
                         item {
                             val count = state.matches.size
                             Text(
-                                text = if (count > 0) "נמצאו $count התאמות בתורה" else "לא נמצאו התאמות במילון",
+                                text = when {
+                                    state.isIndexing && count == 0 -> "ממתין לסיום סריקת התורה..."
+                                    count > 0 -> "נמצאו $count התאמות בתורה"
+                                    else -> "לא נמצאו התאמות בתורה"
+                                },
                                 fontSize = 14.sp,
                                 color = if (count > 0) GoldSoft else MutedText,
                                 fontWeight = FontWeight.SemiBold,

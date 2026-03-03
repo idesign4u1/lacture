@@ -31,14 +31,27 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.jewish.calendar.viewmodel.*
 
-// ── Hebrew chapter letters (א‑ת plus extended) ────────────────────────
+// ── Hebrew verse numerals (up to 176) ─────────────────────────────────
 
 private val hebrewNumerals = listOf(
     "א","ב","ג","ד","ה","ו","ז","ח","ט","י",
     "יא","יב","יג","יד","טו","טז","יז","יח","יט","כ",
     "כא","כב","כג","כד","כה","כו","כז","כח","כט","ל",
     "לא","לב","לג","לד","לה","לו","לז","לח","לט","מ",
-    "מא","מב","מג","מד","מה","מו","מז","מח","מט","נ"
+    "מא","מב","מג","מד","מה","מו","מז","מח","מט","נ",
+    "נא","נב","נג","נד","נה","נו","נז","נח","נט","ס",
+    "סא","סב","סג","סד","סה","סו","סז","סח","סט","ע",
+    "עא","עב","עג","עד","עה","עו","עז","עח","עט","פ",
+    "פא","פב","פג","פד","פה","פו","פז","פח","פט","צ",
+    "צא","צב","צג","צד","צה","צו","צז","צח","צט","ק",
+    "קא","קב","קג","קד","קה","קו","קז","קח","קט","קי",
+    "קיא","קיב","קיג","קיד","קטו","קטז","קיז","קיח","קיט","קכ",
+    "קכא","קכב","קכג","קכד","קכה","קכו","קכז","קכח","קכט","קל",
+    "קלא","קלב","קלג","קלד","קלה","קלו","קלז","קלח","קלט","קמ",
+    "קמא","קמב","קמג","קמד","קמה","קמו","קמז","קמח","קמט","קנ",
+    "קנא","קנב","קנג","קנד","קנה","קנו","קנז","קנח","קנט","קס",
+    "קסא","קסב","קסג","קסד","קסה","קסו","קסז","קסח","קסט","קע",
+    "קעא","קעב","קעג","קעד","קעה","קעו"
 )
 
 private fun hebrewChapter(n: Int): String = hebrewNumerals.getOrElse(n - 1) { n.toString() }
@@ -108,8 +121,8 @@ fun TorahScreen(
                     is TorahNavState.BookList    -> BookListView(
                         onSelectBook = { viewModel.selectBook(it) }
                     )
-                    is TorahNavState.ChapterList -> ChapterListView(
-                        book          = nav.book,
+                    is TorahNavState.ChapterList -> ParashaListView(
+                        book            = nav.book,
                         onSelectChapter = { viewModel.selectChapter(nav.book, it) }
                     )
                     is TorahNavState.Reading     -> ReadingView(
@@ -176,7 +189,7 @@ private fun BookCard(book: TorahBook, onClick: () -> Unit) {
                     color      = accent
                 )
                 Text(
-                    "${book.chapterCount} פרקים",
+                    "${book.parashaList.size} פרשיות · ${book.chapterCount} פרקים",
                     fontSize = 13.sp,
                     color    = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -195,38 +208,60 @@ private fun BookCard(book: TorahBook, onClick: () -> Unit) {
     }
 }
 
-// ── Level 2: Chapter list ──────────────────────────────────────────────
+// ── Level 2: Parasha list ──────────────────────────────────────────────
 
 @Composable
-private fun ChapterListView(book: TorahBook, onSelectChapter: (Int) -> Unit) {
+private fun ParashaListView(book: TorahBook, onSelectChapter: (Int) -> Unit) {
     val accent = Color(book.accentHex)
-    LazyVerticalGrid(
-        columns         = GridCells.Adaptive(minSize = 72.dp),
-        modifier        = Modifier.fillMaxSize().padding(12.dp),
-        contentPadding  = PaddingValues(8.dp),
-        verticalArrangement   = Arrangement.spacedBy(8.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    LazyColumn(
+        modifier       = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(16.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        items(book.chapterCount) { idx ->
-            val ch = idx + 1
-            Box(
-                modifier           = Modifier
-                    .aspectRatio(1f)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(accent.copy(alpha = 0.10f))
-                    .border(1.dp, accent.copy(alpha = 0.25f), RoundedCornerShape(12.dp))
-                    .clickable { onSelectChapter(ch) },
-                contentAlignment   = Alignment.Center
-            ) {
-                Text(
-                    hebrewChapter(ch),
-                    fontSize   = 18.sp,
-                    fontWeight = FontWeight.Bold,
-                    color      = accent,
-                    textAlign  = TextAlign.Center
-                )
-            }
+        item {
+            Text(
+                "בחר פרשה",
+                style      = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold,
+                textAlign  = TextAlign.End,
+                color      = accent,
+                modifier   = Modifier.fillMaxWidth().padding(bottom = 4.dp)
+            )
         }
+        items(book.parashaList) { parasha ->
+            ParashaCard(
+                parasha = parasha,
+                accent  = accent,
+                onClick = { onSelectChapter(parasha.startChapter) }
+            )
+        }
+    }
+}
+
+@Composable
+private fun ParashaCard(parasha: Parasha, accent: Color, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(14.dp))
+            .background(accent.copy(alpha = 0.08f))
+            .border(1.dp, accent.copy(alpha = 0.25f), RoundedCornerShape(14.dp))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 18.dp, vertical = 14.dp),
+        verticalAlignment     = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text(
+            "פרק ${hebrewChapter(parasha.startChapter)}",
+            fontSize = 13.sp,
+            color    = accent.copy(alpha = 0.7f)
+        )
+        Text(
+            "פרשת ${parasha.name}",
+            fontSize   = 20.sp,
+            fontWeight = FontWeight.Bold,
+            color      = accent
+        )
     }
 }
 

@@ -128,6 +128,24 @@ class LocalSefariaRepository @Inject constructor(
     suspend fun getChapterOpening(assetFile: String, chapterIndex: Int): String =
         getChapter(assetFile, chapterIndex).firstOrNull()?.take(80)?.trimEnd() ?: ""
 
+    /**
+     * Returns ALL chapters at once (reads the file only once).
+     * Returns List<List<String>> where outer = chapters (0-based), inner = verses.
+     */
+    suspend fun getAllChapters(assetFile: String): List<List<String>> =
+        withContext(Dispatchers.IO) {
+            try {
+                val json = context.assets.open("sefaria/$assetFile").bufferedReader().readText()
+                val arr  = JSONObject(json).optJSONArray("text") ?: return@withContext emptyList()
+                (0 until arr.length()).map { i ->
+                    val chapter = arr.optJSONArray(i) ?: return@map emptyList<String>()
+                    (0 until chapter.length())
+                        .mapNotNull { j -> chapter.optString(j).takeIf { it.isNotBlank() } }
+                        .map { stripHtml(it) }
+                }
+            } catch (e: Exception) { emptyList() }
+        }
+
     private fun stripHtml(html: String): String =
         html.replace(Regex("<[^>]+>"), "")
             .replace("&nbsp;", " ")
