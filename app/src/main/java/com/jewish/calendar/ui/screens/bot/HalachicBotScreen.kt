@@ -81,10 +81,10 @@ fun HalachicBotScreen(
                     title = {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.End,
+                            horizontalArrangement = Arrangement.Start,
                             modifier = Modifier.fillMaxWidth()
                         ) {
-                            Column(horizontalAlignment = Alignment.End) {
+                            Column(horizontalAlignment = Alignment.Start) {
                                 Text(
                                     "הרב שמואל כהן",
                                     style = MaterialTheme.typography.titleMedium,
@@ -265,10 +265,10 @@ private fun TopicCard(topic: HalachicTopic, onQuestionClick: (String) -> Unit) {
                 contentPadding = PaddingValues(horizontal = 4.dp, vertical = 2.dp)
             ) {
                 Text(
-                    text = "← $question",
+                    text = "• $question",
                     style = MaterialTheme.typography.bodySmall,
                     color = GoldSoft.copy(alpha = 0.85f),
-                    textAlign = TextAlign.End,
+                    textAlign = TextAlign.Start,
                     modifier = Modifier.fillMaxWidth()
                 )
             }
@@ -417,31 +417,7 @@ private fun ChatInputBar(
                 .imePadding(),
             verticalAlignment = Alignment.Bottom
         ) {
-            // Send button (left side in RTL)
-            IconButton(
-                onClick = onSend,
-                enabled = inputText.isNotBlank() && !isLoading,
-                modifier = Modifier
-                    .size(46.dp)
-                    .clip(CircleShape)
-                    .background(
-                        if (inputText.isNotBlank() && !isLoading)
-                            Brush.radialGradient(listOf(GoldAccent, GoldDim))
-                        else
-                            Brush.radialGradient(listOf(NavyCard, NavyCard))
-                    )
-            ) {
-                Icon(
-                    if (isLoading) Icons.Default.HourglassEmpty else Icons.Default.Send,
-                    contentDescription = "שלח",
-                    tint = if (inputText.isNotBlank() && !isLoading) NavyDeep else MutedText,
-                    modifier = Modifier.size(20.dp)
-                )
-            }
-
-            Spacer(Modifier.width(10.dp))
-
-            // Text input field
+            // Text input field (right side in RTL — comes first)
             OutlinedTextField(
                 value = inputText,
                 onValueChange = onInputChanged,
@@ -480,6 +456,30 @@ private fun ChatInputBar(
                     cursorColor              = GoldAccent
                 )
             )
+
+            Spacer(Modifier.width(10.dp))
+
+            // Send button (left side in RTL — comes second)
+            IconButton(
+                onClick = onSend,
+                enabled = inputText.isNotBlank() && !isLoading,
+                modifier = Modifier
+                    .size(46.dp)
+                    .clip(CircleShape)
+                    .background(
+                        if (inputText.isNotBlank() && !isLoading)
+                            Brush.radialGradient(listOf(GoldAccent, GoldDim))
+                        else
+                            Brush.radialGradient(listOf(NavyCard, NavyCard))
+                    )
+            ) {
+                Icon(
+                    if (isLoading) Icons.Default.HourglassEmpty else Icons.Default.Send,
+                    contentDescription = "שלח",
+                    tint = if (inputText.isNotBlank() && !isLoading) NavyDeep else MutedText,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
         }
     }
 }

@@ -40,19 +40,31 @@ private val LightColorScheme = lightColorScheme(
 )
 
 private val DarkColorScheme = darkColorScheme(
-    primary = DarkPrimary,
-    onPrimary = Blue80,
-    primaryContainer = Blue80,
-    onPrimaryContainer = Blue40,
-    secondary = Gold40,
-    onSecondary = Gold80,
-    secondaryContainer = Gold80,
-    onSecondaryContainer = Gold40,
-    tertiary = PurityPink,
-    background = DarkBackground,
-    surface = DarkSurface,
-    onBackground = androidx.compose.ui.graphics.Color(0xFFE6E1E5),
-    onSurface = androidx.compose.ui.graphics.Color(0xFFE6E1E5)
+    primary              = DarkPrimary,
+    onPrimary            = androidx.compose.ui.graphics.Color(0xFF003259),
+    primaryContainer     = androidx.compose.ui.graphics.Color(0xFF004881),
+    onPrimaryContainer   = androidx.compose.ui.graphics.Color(0xFFD1E4FF),
+    secondary            = Gold40,
+    onSecondary          = androidx.compose.ui.graphics.Color(0xFF3D2000),
+    secondaryContainer   = androidx.compose.ui.graphics.Color(0xFF5A3800),
+    onSecondaryContainer = androidx.compose.ui.graphics.Color(0xFFFFDEA6),
+    tertiary             = PurityPink,
+    onTertiary           = androidx.compose.ui.graphics.Color(0xFF4A0050),
+    tertiaryContainer    = androidx.compose.ui.graphics.Color(0xFF6B006E),
+    onTertiaryContainer  = PurityPink,
+    background           = DarkBackground,
+    onBackground         = androidx.compose.ui.graphics.Color(0xFFE6E1E5),
+    surface              = DarkSurface,
+    onSurface            = androidx.compose.ui.graphics.Color(0xFFE6E1E5),
+    surfaceVariant       = androidx.compose.ui.graphics.Color(0xFF49454F),
+    onSurfaceVariant     = androidx.compose.ui.graphics.Color(0xFFCAC4D0),
+    outline              = androidx.compose.ui.graphics.Color(0xFF938F99),
+    outlineVariant       = androidx.compose.ui.graphics.Color(0xFF49454F),
+    error                = androidx.compose.ui.graphics.Color(0xFFCF6679),
+    onError              = androidx.compose.ui.graphics.Color(0xFF370B1E),
+    errorContainer       = androidx.compose.ui.graphics.Color(0xFF8C1D41),
+    onErrorContainer     = androidx.compose.ui.graphics.Color(0xFFFFB3B3),
+    scrim                = androidx.compose.ui.graphics.Color(0xFF000000)
 )
 
 @Composable

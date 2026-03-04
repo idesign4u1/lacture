@@ -6,6 +6,8 @@ import android.location.Geocoder
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -215,8 +217,8 @@ fun ZmanimScreen(
     pendingAlarmItem?.let { item ->
         AlarmConfirmDialog(
             item = item,
-            onConfirm = { repeatDaily ->
-                viewModel.toggleAlarm(item.key, item.label, item.date?.time, repeatDaily)
+            onConfirm = { repeatDaily, minutesBefore ->
+                viewModel.toggleAlarm(item.key, item.label, item.date?.time, repeatDaily, minutesBefore)
                 pendingAlarmItem = null
             },
             onDismiss = { pendingAlarmItem = null }
@@ -229,10 +231,12 @@ fun ZmanimScreen(
 @Composable
 private fun AlarmConfirmDialog(
     item: ZmanimItem,
-    onConfirm: (repeatDaily: Boolean) -> Unit,
+    onConfirm: (repeatDaily: Boolean, minutesBefore: Int) -> Unit,
     onDismiss: () -> Unit
 ) {
     var repeatDaily by remember { mutableStateOf(false) }
+    var minutesBefore by remember { mutableStateOf(0) }
+    val minutesOptions = listOf(0, 5, 10, 15, 20, 30)
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -258,13 +262,48 @@ private fun AlarmConfirmDialog(
                     text = if (item.hasAlarm)
                         "האם לבטל את ההתרעה עבור\n${item.label} (${item.time})?"
                     else
-                        "האם להגדיר התרעה עבור\n${item.label} (${item.time})?",
+                        "התרעה עבור\n${item.label} (${item.time})",
                     textAlign = TextAlign.Center,
                     modifier = Modifier.fillMaxWidth()
                 )
-                // Show "repeat daily" toggle only when setting a new alarm
+
                 if (!item.hasAlarm) {
+                    // Minutes before selector
                     Spacer(Modifier.height(16.dp))
+                    Text(
+                        text = "כמה דקות לפני?",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.fillMaxWidth(),
+                        textAlign = TextAlign.Start
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        minutesOptions.forEach { mins ->
+                            val isSelected = mins == minutesBefore
+                            FilterChip(
+                                selected = isSelected,
+                                onClick = { minutesBefore = mins },
+                                label = {
+                                    Text(
+                                        text = if (mins == 0) "בזמן" else "$mins′",
+                                        fontSize = 12.sp
+                                    )
+                                },
+                                modifier = Modifier.weight(1f),
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = Gold60,
+                                    selectedLabelColor = androidx.compose.ui.graphics.Color.Black
+                                )
+                            )
+                        }
+                    }
+
+                    // Repeat daily toggle
+                    Spacer(Modifier.height(12.dp))
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically,
@@ -287,7 +326,7 @@ private fun AlarmConfirmDialog(
         },
         confirmButton = {
             Button(
-                onClick = { onConfirm(repeatDaily) },
+                onClick = { onConfirm(repeatDaily, minutesBefore) },
                 colors = ButtonDefaults.buttonColors(
                     containerColor = if (item.hasAlarm) MaterialTheme.colorScheme.error else Gold60
                 )

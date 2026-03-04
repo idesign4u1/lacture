@@ -3,6 +3,7 @@ package com.jewish.calendar.ui.screens.tools
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -32,7 +33,7 @@ import com.jewish.calendar.viewmodel.PrayerSectionData
 import com.jewish.calendar.viewmodel.SiddurPrayerTime
 import com.jewish.calendar.viewmodel.SiddurViewModel
 
-// ── Color palette ──────────────────────────────────────────────────────
+// ── Color palette (light theme — parchment style) ──────────────────────
 
 private val Parchment      = Color(0xFFFDF6E3)
 private val ParchmentDark  = Color(0xFFEDE0C8)
@@ -42,6 +43,16 @@ private val SiddurGold     = Color(0xFFD4AF37)
 private val SiddurBlue     = Color(0xFF003E7E)
 private val SectionBg      = Color(0xFFF5ECD7)
 private val NoteColor      = Color(0xFF8B6914)
+
+// ── Dark theme colors ──────────────────────────────────────────────────
+
+private val DarkSiddurBg       = Color(0xFF121212)
+private val DarkSiddurSurface  = Color(0xFF1E1E1E)
+private val DarkSiddurTopBar   = Color(0xFF1A1A2E)
+private val DarkSiddurText     = Color(0xFFE8E0D0)
+private val DarkSiddurSubText  = Color(0xFFB0A898)
+private val DarkSiddurNote     = Color(0xFFCFAD5A)
+private val DarkSectionBg      = Color(0xFF242424)
 
 // ── Screen ─────────────────────────────────────────────────────────────
 
@@ -55,6 +66,13 @@ fun SiddurScreen(
     val sections = remember(state.selectedCategory, state.selectedNusach) {
         viewModel.getSectionsFor(state.selectedCategory)
     }
+    val isDark = isSystemInDarkTheme()
+
+    // Theme-aware color helpers
+    val bgColor      = if (isDark) DarkSiddurBg      else Parchment
+    val topBarColor  = if (isDark) DarkSiddurTopBar  else ParchmentDark
+    val titleColor   = if (isDark) DarkSiddurText    else InkBrown
+    val accentColor  = if (isDark) SiddurGold        else SiddurBlue
 
     Scaffold(
         topBar = {
@@ -64,7 +82,7 @@ fun SiddurScreen(
                         "סידור תפילה",
                         fontWeight = FontWeight.Bold,
                         fontSize = 20.sp,
-                        color = InkBrown
+                        color = titleColor
                     )
                 },
                 navigationIcon = {
@@ -72,30 +90,30 @@ fun SiddurScreen(
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "חזור",
-                            tint = SiddurBlue
+                            tint = accentColor
                         )
                     }
                 },
                 actions = {
                     // Font size controls
                     IconButton(onClick = { viewModel.decreaseFontSize() }) {
-                        Icon(Icons.Default.Remove, contentDescription = "הקטן גופן", tint = SiddurBlue)
+                        Icon(Icons.Default.Remove, contentDescription = "הקטן גופן", tint = accentColor)
                     }
                     Text(
                         "${state.fontSize}",
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Bold,
-                        color = InkBrown,
+                        color = titleColor,
                         modifier = Modifier.padding(horizontal = 2.dp)
                     )
                     IconButton(onClick = { viewModel.increaseFontSize() }) {
-                        Icon(Icons.Default.Add, contentDescription = "הגדל גופן", tint = SiddurBlue)
+                        Icon(Icons.Default.Add, contentDescription = "הגדל גופן", tint = accentColor)
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = ParchmentDark)
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = topBarColor)
             )
         },
-        containerColor = Parchment
+        containerColor = bgColor
     ) { padding ->
         Column(
             modifier = Modifier
@@ -147,11 +165,13 @@ fun SiddurScreen(
 @Composable
 private fun SmartSuggestionBanner(suggested: SiddurPrayerTime, selected: SiddurPrayerTime) {
     val isMatch = suggested == selected
+    val isDark = isSystemInDarkTheme()
+    val textColor = if (isDark) SiddurGold else SiddurBlue
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .background(
-                if (isMatch) SiddurBlue.copy(alpha = 0.08f) else Color.Transparent
+                if (isMatch) textColor.copy(alpha = 0.10f) else Color.Transparent
             )
             .padding(horizontal = 16.dp, vertical = 8.dp)
     ) {
@@ -163,7 +183,7 @@ private fun SmartSuggestionBanner(suggested: SiddurPrayerTime, selected: SiddurP
                     "עכשיו זמן ${suggested.hebrewName}",
                     fontSize = 14.sp,
                     fontWeight = FontWeight.SemiBold,
-                    color = SiddurBlue
+                    color = textColor
                 )
             }
         }
@@ -177,16 +197,23 @@ private fun NusachSelector(
     selected: NusachType,
     onSelect: (NusachType) -> Unit
 ) {
+    val isDark = isSystemInDarkTheme()
+    val bgColor     = if (isDark) DarkSiddurSurface else ParchmentDark.copy(alpha = 0.6f)
+    val labelColor  = if (isDark) DarkSiddurSubText else InkLight
+    val chipActive  = if (isDark) SiddurGold        else SiddurBlue
+    val chipBorder  = if (isDark) DarkSiddurNote.copy(alpha = 0.5f) else NoteColor.copy(alpha = 0.5f)
+    val textInactive = if (isDark) DarkSiddurText   else InkBrown
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(ParchmentDark.copy(alpha = 0.6f))
+            .background(bgColor)
             .padding(horizontal = 12.dp, vertical = 6.dp)
     ) {
         Text(
             text = "נוסח תפילה:",
             fontSize = 11.sp,
-            color = InkLight,
+            color = labelColor,
             fontWeight = FontWeight.SemiBold,
             modifier = Modifier.fillMaxWidth(),
             textAlign = TextAlign.End
@@ -202,10 +229,10 @@ private fun NusachSelector(
                 Box(
                     modifier = Modifier
                         .clip(RoundedCornerShape(16.dp))
-                        .background(if (isSelected) SiddurBlue else Color.Transparent)
+                        .background(if (isSelected) chipActive else Color.Transparent)
                         .border(
                             width = 1.dp,
-                            color = if (isSelected) SiddurBlue else NoteColor.copy(alpha = 0.5f),
+                            color = if (isSelected) chipActive else chipBorder,
                             shape = RoundedCornerShape(16.dp)
                         )
                         .clickable { onSelect(nusach) }
@@ -216,7 +243,7 @@ private fun NusachSelector(
                         text = "${nusach.icon} ${nusach.shortName}",
                         fontSize = 12.sp,
                         fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                        color = if (isSelected) Color.White else InkBrown
+                        color = if (isSelected) (if (isDark) Color.Black else Color.White) else textInactive
                     )
                 }
             }
@@ -232,10 +259,17 @@ private fun CategoryTabs(
     selected: SiddurPrayerTime,
     onSelect: (SiddurPrayerTime) -> Unit
 ) {
+    val isDark = isSystemInDarkTheme()
+    val bgColor      = if (isDark) DarkSiddurSurface else ParchmentDark
+    val chipActive   = if (isDark) SiddurGold        else SiddurBlue
+    val chipBorder   = if (isDark) SiddurGold.copy(alpha = 0.5f) else SiddurGold.copy(alpha = 0.6f)
+    val textInactive = if (isDark) DarkSiddurText     else InkBrown
+    val textActive   = if (isDark) Color.Black        else Color.White
+
     LazyRow(
         modifier = Modifier
             .fillMaxWidth()
-            .background(ParchmentDark)
+            .background(bgColor)
             .padding(horizontal = 12.dp, vertical = 8.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
@@ -244,10 +278,10 @@ private fun CategoryTabs(
             Box(
                 modifier = Modifier
                     .clip(RoundedCornerShape(20.dp))
-                    .background(if (isSelected) SiddurBlue else Color.Transparent)
+                    .background(if (isSelected) chipActive else Color.Transparent)
                     .border(
                         width = 1.dp,
-                        color = if (isSelected) SiddurBlue else SiddurGold.copy(alpha = 0.6f),
+                        color = if (isSelected) chipActive else chipBorder,
                         shape = RoundedCornerShape(20.dp)
                     )
                     .clickable { onSelect(time) }
@@ -258,7 +292,7 @@ private fun CategoryTabs(
                     text = "${time.icon} ${time.hebrewName}",
                     fontSize = 14.sp,
                     fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                    color = if (isSelected) Color.White else InkBrown
+                    color = if (isSelected) textActive else textInactive
                 )
             }
         }
@@ -286,12 +320,18 @@ private fun SectionList(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun SectionCard(section: PrayerSectionData, onClick: () -> Unit) {
+    val isDark = isSystemInDarkTheme()
+    val cardBg    = if (isDark) DarkSectionBg    else SectionBg
+    val titleClr  = if (isDark) DarkSiddurText   else InkBrown
+    val subClr    = if (isDark) DarkSiddurSubText else InkLight
+    val noteClr   = if (isDark) DarkSiddurNote   else NoteColor
+
     ElevatedCard(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
         elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp),
-        colors = CardDefaults.elevatedCardColors(containerColor = SectionBg)
+        colors = CardDefaults.elevatedCardColors(containerColor = cardBg)
     ) {
         Row(
             modifier = Modifier
@@ -314,14 +354,14 @@ private fun SectionCard(section: PrayerSectionData, onClick: () -> Unit) {
                     text = section.title,
                     fontSize = 17.sp,
                     fontWeight = FontWeight.Bold,
-                    color = InkBrown
+                    color = titleClr
                 )
                 if (section.openingLine.isNotBlank()) {
                     Spacer(Modifier.height(3.dp))
                     Text(
                         text = section.openingLine,
                         fontSize = 13.sp,
-                        color = InkLight,
+                        color = subClr,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -331,7 +371,7 @@ private fun SectionCard(section: PrayerSectionData, onClick: () -> Unit) {
                     Text(
                         text = "• ${section.halachicNote}",
                         fontSize = 11.sp,
-                        color = NoteColor,
+                        color = noteClr,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -341,13 +381,13 @@ private fun SectionCard(section: PrayerSectionData, onClick: () -> Unit) {
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(8.dp))
-                            .background(SiddurGold.copy(alpha = 0.12f))
+                            .background(SiddurGold.copy(alpha = if (isDark) 0.20f else 0.12f))
                             .padding(horizontal = 6.dp, vertical = 2.dp)
                     ) {
                         Text(
                             text = section.nusachNote,
                             fontSize = 10.sp,
-                            color = NoteColor,
+                            color = noteClr,
                             fontWeight = FontWeight.Medium
                         )
                     }
@@ -364,7 +404,7 @@ private fun SectionCard(section: PrayerSectionData, onClick: () -> Unit) {
                         .border(1.dp, SiddurGold.copy(alpha = 0.5f), CircleShape)
                         .padding(horizontal = 8.dp, vertical = 4.dp)
                 ) {
-                    Text("ספריא", fontSize = 10.sp, color = NoteColor, fontWeight = FontWeight.Medium)
+                    Text("ספריא", fontSize = 10.sp, color = noteClr, fontWeight = FontWeight.Medium)
                 }
             }
         }
@@ -381,6 +421,13 @@ private fun PrayerTextView(
     fontSize: Int,
     onBack: () -> Unit
 ) {
+    val isDark      = isSystemInDarkTheme()
+    val titleClr    = if (isDark) DarkSiddurText    else InkBrown
+    val noteClr     = if (isDark) DarkSiddurNote    else NoteColor
+    val textClr     = if (isDark) DarkSiddurText    else InkBrown
+    val subtleClr   = if (isDark) DarkSiddurSubText else InkLight
+    val accentColor = if (isDark) SiddurGold        else SiddurBlue
+
     Column(modifier = Modifier.fillMaxSize()) {
         // Section header
         Row(
@@ -388,27 +435,27 @@ private fun PrayerTextView(
                 .fillMaxWidth()
                 .background(
                     Brush.horizontalGradient(
-                        listOf(SiddurBlue.copy(alpha = 0.08f), SiddurGold.copy(alpha = 0.06f))
+                        listOf(accentColor.copy(alpha = 0.08f), SiddurGold.copy(alpha = 0.06f))
                     )
                 )
                 .padding(horizontal = 8.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             IconButton(onClick = onBack) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "חזור", tint = SiddurBlue)
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "חזור", tint = accentColor)
             }
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = section.title,
                     fontSize = 19.sp,
                     fontWeight = FontWeight.Bold,
-                    color = InkBrown
+                    color = titleClr
                 )
                 if (section.halachicNote.isNotBlank()) {
                     Text(
                         text = section.halachicNote,
                         fontSize = 12.sp,
-                        color = NoteColor
+                        color = noteClr
                     )
                 }
             }
@@ -420,15 +467,15 @@ private fun PrayerTextView(
             isLoading -> {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        CircularProgressIndicator(color = SiddurBlue)
+                        CircularProgressIndicator(color = accentColor)
                         Spacer(Modifier.height(12.dp))
-                        Text("טוען טקסט...", color = InkLight, fontSize = 14.sp)
+                        Text("טוען טקסט...", color = subtleClr, fontSize = 14.sp)
                     }
                 }
             }
             text.isBlank() -> {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text("לא ניתן לטעון את הטקסט", color = InkLight)
+                    Text("לא ניתן לטעון את הטקסט", color = subtleClr)
                 }
             }
             else -> {
@@ -443,7 +490,7 @@ private fun PrayerTextView(
                         Text(
                             text = text,
                             fontSize = fontSize.sp,
-                            color = InkBrown,
+                            color = textClr,
                             lineHeight = (fontSize * 1.9f).sp,
                             textAlign = TextAlign.Start,
                             fontWeight = FontWeight.Normal

@@ -79,12 +79,14 @@ class ZmanimViewModel @Inject constructor(
         else loadDefaultZmanim()
     }
 
-    /** Toggle alarm for a given zman. Pass repeatDaily=true to reschedule every day automatically. */
+    /** Toggle alarm for a given zman. Pass repeatDaily=true to reschedule every day automatically.
+     *  minutesBefore: schedule the alarm this many minutes before the actual zman time. */
     fun toggleAlarm(
         key: String,
         label: String,
         scheduledTimeMs: Long?,
-        repeatDaily: Boolean = false
+        repeatDaily: Boolean = false,
+        minutesBefore: Int = 0
     ) {
         viewModelScope.launch {
             val isActive = key in _uiState.value.activeAlarmKeys
@@ -97,18 +99,24 @@ class ZmanimViewModel @Inject constructor(
                     )
                 }
             } else {
-                if (scheduledTimeMs == null || scheduledTimeMs <= System.currentTimeMillis()) {
+                if (scheduledTimeMs == null) {
+                    _uiState.update { it.copy(alarmMessage = "לא ניתן להגדיר התרעה עבור $label") }
+                    return@launch
+                }
+                val adjustedTime = scheduledTimeMs - (minutesBefore * 60 * 1000L)
+                if (adjustedTime <= System.currentTimeMillis()) {
                     _uiState.update { it.copy(alarmMessage = "הזמן $label כבר עבר היום") }
                     return@launch
                 }
                 val lat = _uiState.value.userLat
                 val lon = _uiState.value.userLon
-                alarmScheduler.scheduleAlarm(key, label, scheduledTimeMs, repeatDaily, lat, lon)
-                val suffix = if (repeatDaily) " (כל יום)" else ""
+                alarmScheduler.scheduleAlarm(key, label, adjustedTime, repeatDaily, lat, lon)
+                val minutesStr = if (minutesBefore > 0) " ($minutesBefore דק׳ לפני)" else ""
+                val repeatStr = if (repeatDaily) " • כל יום" else ""
                 _uiState.update {
                     it.copy(
                         activeAlarmKeys = it.activeAlarmKeys + key,
-                        alarmMessage = "התרעה הוגדרה עבור $label$suffix"
+                        alarmMessage = "התרעה הוגדרה עבור $label$minutesStr$repeatStr"
                     )
                 }
             }

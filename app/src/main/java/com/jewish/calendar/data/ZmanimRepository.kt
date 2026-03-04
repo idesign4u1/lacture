@@ -18,14 +18,22 @@ class ZmanimRepository @Inject constructor() {
         cityName: String = "מיקומי הנוכחי",
         candleLightingOffset: Int = 18
     ): ZmanimModel {
-        val cal = Calendar.getInstance().apply { time = date }
+        // Use Israel timezone explicitly when coordinates are within Israel bounds.
+        // This avoids errors on devices whose system timezone is set incorrectly.
+        val tz = if (location.latitude in 29.0..34.0 && location.longitude in 34.0..36.0) {
+            TimeZone.getTimeZone("Asia/Jerusalem")
+        } else {
+            TimeZone.getDefault()
+        }
+
+        val cal = Calendar.getInstance(tz).apply { time = date }
 
         val geoLocation = GeoLocation(
             cityName,
             location.latitude,
             location.longitude,
             location.altitude,
-            TimeZone.getDefault()
+            tz
         )
 
         val zcal = ComplexZmanimCalendar(geoLocation).apply {
@@ -69,24 +77,20 @@ class ZmanimRepository @Inject constructor() {
 
     // Default zmanim for Jerusalem when no location available
     fun getJerusalemZmanim(date: Date): ZmanimModel {
-        val jerusalemLocation = object : Location("") {
-            init {
-                latitude = 31.7683
-                longitude = 35.2137
-                altitude = 786.0
-            }
+        val jerusalemLocation = Location("").apply {
+            latitude  = 31.7683
+            longitude = 35.2137
+            altitude  = 786.0
         }
         return calculateZmanim(date, jerusalemLocation, "ירושלים")
     }
 
     // Default zmanim for Tel Aviv
     fun getTelAvivZmanim(date: Date): ZmanimModel {
-        val tlvLocation = object : Location("") {
-            init {
-                latitude = 32.0853
-                longitude = 34.7818
-                altitude = 5.0
-            }
+        val tlvLocation = Location("").apply {
+            latitude  = 32.0853
+            longitude = 34.7818
+            altitude  = 5.0
         }
         return calculateZmanim(date, tlvLocation, "תל אביב")
     }

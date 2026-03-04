@@ -2,25 +2,18 @@ package com.jewish.calendar.ui.screens.tools
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-
-private val israeliBlue  = Color(0xFF003E7E)
-private val templeGold   = Color(0xFFD4AF37)
-private val sectionColor = Color(0xFF5C6370)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -40,7 +33,8 @@ fun ToolsScreen(
     onNavigateToChalla: () -> Unit,
     onNavigateToSpiritualTracking: () -> Unit,
     onNavigateToTorah: () -> Unit,
-    onNavigateToMishna: () -> Unit
+    onNavigateToMishna: () -> Unit,
+    onNavigateToSynagogueMap: () -> Unit = {}
 ) {
     Scaffold(
         topBar = {
@@ -58,150 +52,50 @@ fun ToolsScreen(
             )
         }
     ) { padding ->
-        Column(
+        LazyVerticalGrid(
+            columns = GridCells.Fixed(2),
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .verticalScroll(rememberScrollState())
-                .background(MaterialTheme.colorScheme.background)
-                .padding(16.dp),
+                .background(MaterialTheme.colorScheme.background),
+            contentPadding = PaddingValues(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            // ── תפילה ולימוד ──
-            SectionHeader("תפילה ולימוד")
+            // ── תפילה ──
+            item(span = { GridItemSpan(2) }) { SectionHeader("תפילה") }
 
-            ToolCard(
-                emoji = "🕍",
-                title = "תּוֹרָה",
-                description = "חמישה חומשי תורה — בראשית, שמות, ויקרא, במדבר, דברים",
-                accentColor = Color(0xFF2E7D32),
-                onClick = onNavigateToTorah
-            )
-            ToolCard(
-                emoji = "📚",
-                title = "מִשְׁנָה",
-                description = "פרקי אבות, ברכות ועוד — לימוד יומי למעלה ולמטה",
-                accentColor = Color(0xFF6A1B9A),
-                onClick = onNavigateToMishna
-            )
-            ToolCard(
-                emoji = "📖",
-                title = "סידור תפילה",
-                description = "תפילות שחרית, מנחה וערבית עם זיהוי חכם לפי השעה",
-                accentColor = Color(0xFF6A1B9A),
-                onClick = onNavigateToSiddur
-            )
-            ToolCard(
-                emoji = "📜",
-                title = "תהילים",
-                description = "כל 150 מזמורי תהילים, מאורגנים בחמישה ספרים",
-                accentColor = Color(0xFF4527A0),
-                onClick = onNavigateToPsalms
-            )
-            ToolCard(
-                emoji = "🙏",
-                title = "תפילות מיוחדות",
-                description = "תפילות לרפואה, פרנסה, שידוך ועוד — לכל עת ושעה",
-                accentColor = Color(0xFF1A237E),
-                onClick = onNavigateToSpecialPrayers
-            )
-            ToolCard(
-                emoji = "✡",
-                title = "ברכות יומיות",
-                description = "ברכות מותאמות לשעת היום, עם ברכה מלאה לכל מאכל",
-                accentColor = Color(0xFF1565C0),
-                onClick = onNavigateToBlessings
-            )
+            item { ToolGridCard(emoji = "📖", title = "סידור תפילה",   color = MaterialTheme.colorScheme.primary, onClick = onNavigateToSiddur) }
+            item { ToolGridCard(emoji = "🙏", title = "תפילות מיוחדות", color = MaterialTheme.colorScheme.tertiary, onClick = onNavigateToSpecialPrayers) }
+            item { ToolGridCard(emoji = "✡",  title = "ברכות יומיות",  color = MaterialTheme.colorScheme.secondary, onClick = onNavigateToBlessings) }
+            item { ToolGridCard(emoji = "📜", title = "תיקון הכללי",   color = MaterialTheme.colorScheme.primary, onClick = onNavigateToTikkun) }
 
-            Spacer(Modifier.height(4.dp))
+            // ── לימוד תורה ──
+            item(span = { GridItemSpan(2) }) { SectionHeader("לימוד תורה") }
 
-            // ── מצוות ומסורת ──
-            SectionHeader("מצוות ומסורת")
+            item { ToolGridCard(emoji = "🕍", title = "תּוֹרָה",      color = MaterialTheme.colorScheme.primary, onClick = onNavigateToTorah) }
+            item { ToolGridCard(emoji = "📚", title = "מִשְׁנָה",     color = MaterialTheme.colorScheme.secondary, onClick = onNavigateToMishna) }
+            item { ToolGridCard(emoji = "📜", title = "תהילים",       color = MaterialTheme.colorScheme.primary, onClick = onNavigateToPsalms) }
+            item { ToolGridCard(emoji = "🌾", title = "ספירת העומר",  color = MaterialTheme.colorScheme.tertiary, onClick = onNavigateToOmer) }
+            item { ToolGridCard(emoji = "🔢", title = "גימטרייה",     color = MaterialTheme.colorScheme.secondary, onClick = onNavigateToGematria) }
 
-            ToolCard(
-                emoji = "🌾",
-                title = "ספירת העומר",
-                description = "ספירה יומית עם שמירת רצף, מידות הספירה ונוסח הברכה",
-                accentColor = Color(0xFF004D40),
-                onClick = onNavigateToOmer
-            )
-            ToolCard(
-                emoji = "📜",
-                title = "תיקון הכללי",
-                description = "עשרת המזמורים של רבי נחמן מברסלב עם מעקב התקדמות",
-                accentColor = Color(0xFF4A148C),
-                onClick = onNavigateToTikkun
-            )
-            ToolCard(
-                emoji = "🫓",
-                title = "הפרשת חלה",
-                description = "מדריך שלב אחר שלב לקיום מצוות הפרשת חלה, כולל מתכונים",
-                accentColor = Color(0xFF6D4C41),
-                onClick = onNavigateToChalla
-            )
-            ToolCard(
-                emoji = "🔢",
-                title = "מחשבון גימטרייה",
-                description = "חשב גימטרייה וחפש מילים בעלות אותו ערך בתורה",
-                accentColor = Color(0xFF1565C0),
-                onClick = onNavigateToGematria
-            )
+            // ── חיזוק רוחני ──
+            item(span = { GridItemSpan(2) }) { SectionHeader("חיזוק רוחני") }
 
-            Spacer(Modifier.height(4.dp))
+            item { ToolGridCard(emoji = "⭐", title = "חיזוק יומי",    color = MaterialTheme.colorScheme.secondary, onClick = onNavigateToDailyInspiration) }
+            item { ToolGridCard(emoji = "🌸", title = "יומן הודיה",    color = MaterialTheme.colorScheme.tertiary, onClick = onNavigateToGratitude) }
+            item { ToolGridCard(emoji = "💑", title = "שלום בית",      color = MaterialTheme.colorScheme.primary, onClick = onNavigateToShalomBayit) }
+            item { ToolGridCard(emoji = "📊", title = "מעקב רוחני",    color = MaterialTheme.colorScheme.secondary, onClick = onNavigateToSpiritualTracking) }
 
-            // ── חיזוק אישי ──
-            SectionHeader("חיזוק אישי")
+            // ── כלים ──
+            item(span = { GridItemSpan(2) }) { SectionHeader("כלים") }
 
-            ToolCard(
-                emoji = "⭐",
-                title = "חיזוק יומי",
-                description = "פסוק ומחשבה לחיזוק הנפש — מתחלף מדי יום",
-                accentColor = Color(0xFF8D6E00),
-                onClick = onNavigateToDailyInspiration
-            )
-            ToolCard(
-                emoji = "🌸",
-                title = "יומן הודיה",
-                description = "רשום את רגעי ההכרת הטובה שלך — הכרת טובה משנה חיים",
-                accentColor = Color(0xFFE65100),
-                onClick = onNavigateToGratitude
-            )
-            ToolCard(
-                emoji = "💑",
-                title = "שלום בית",
-                description = "טיפים וחיזוקים לקשר זוגי מבורך — בניית הבית היהודי",
-                accentColor = Color(0xFFE91E63),
-                onClick = onNavigateToShalomBayit
-            )
-            ToolCard(
-                emoji = "📊",
-                title = "מעקב רוחני",
-                description = "עקוב אחר תפילה, לימוד תורה, חסד ותהילים — בנה שגרה רוחנית",
-                accentColor = Color(0xFF1A237E),
-                onClick = onNavigateToSpiritualTracking
-            )
+            item { ToolGridCard(emoji = "✡",  title = "מצפן ירושלים", color = MaterialTheme.colorScheme.primary, onClick = onNavigateToCompass) }
+            item { ToolGridCard(emoji = "🕍", title = "הכותל המערבי", color = MaterialTheme.colorScheme.secondary, onClick = onNavigateToKotel) }
+            item { ToolGridCard(emoji = "🗺️", title = "בתי כנסת",     color = MaterialTheme.colorScheme.primary, onClick = onNavigateToSynagogueMap) }
+            item { ToolGridCard(emoji = "🫓", title = "הפרשת חלה",    color = MaterialTheme.colorScheme.tertiary, onClick = onNavigateToChalla) }
 
-            Spacer(Modifier.height(4.dp))
-
-            // ── כלים ─
-            SectionHeader("כלים")
-
-            ToolCard(
-                emoji = "✡",
-                title = "מצפן ירושלים",
-                description = "כיוון התפילה עם רטט בהגעה לכיוון הנכון",
-                accentColor = israeliBlue,
-                onClick = onNavigateToCompass
-            )
-            ToolCard(
-                emoji = "🕍",
-                title = "הכותל המערבי",
-                description = "צפייה בשידור חי מהכותל המערבי",
-                accentColor = templeGold,
-                onClick = onNavigateToKotel
-            )
-
-            Spacer(Modifier.height(16.dp))
+            item(span = { GridItemSpan(2) }) { Spacer(Modifier.height(8.dp)) }
         }
     }
 }
@@ -211,77 +105,64 @@ private fun SectionHeader(title: String) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(start = 4.dp, top = 8.dp, bottom = 4.dp),
+            .padding(top = 8.dp, bottom = 2.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.End
+        horizontalArrangement = Arrangement.Start
     ) {
+        HorizontalDivider(
+            modifier = Modifier.weight(1f),
+            thickness = 1.dp,
+            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.25f)
+        )
+        Spacer(Modifier.width(8.dp))
         Text(
-            text       = title.uppercase(),
-            fontSize   = 11.sp,
+            text = title,
+            fontSize = 11.sp,
             fontWeight = FontWeight.ExtraBold,
-            color      = israeliBlue,
+            color = MaterialTheme.colorScheme.primary,
             letterSpacing = 1.5.sp
         )
-        Spacer(Modifier.width(6.dp))
+        Spacer(Modifier.width(8.dp))
         HorizontalDivider(
-            modifier  = Modifier.weight(1f),
+            modifier = Modifier.weight(1f),
             thickness = 1.dp,
-            color     = israeliBlue.copy(alpha = 0.25f)
+            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.25f)
         )
     }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun ToolCard(
+private fun ToolGridCard(
     emoji: String,
     title: String,
-    description: String,
-    accentColor: Color,
+    color: androidx.compose.ui.graphics.Color,
     onClick: () -> Unit
 ) {
     ElevatedCard(
         onClick = onClick,
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(100.dp),
         shape = RoundedCornerShape(16.dp),
-        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 3.dp)
+        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp)
     ) {
-        Row(
+        Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
+                .fillMaxSize()
+                .padding(12.dp),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Box(
-                modifier = Modifier
-                    .size(52.dp)
-                    .background(accentColor.copy(alpha = 0.12f), CircleShape),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(emoji, fontSize = 26.sp)
-            }
-
-            Spacer(Modifier.width(14.dp))
-
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = accentColor
-                )
-                Spacer(Modifier.height(2.dp))
-                Text(
-                    text = description,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-
-            Icon(
-                imageVector = Icons.Default.ChevronLeft,
-                contentDescription = null,
-                tint = accentColor.copy(alpha = 0.5f)
+            Text(emoji, fontSize = 28.sp, textAlign = TextAlign.Center)
+            Spacer(Modifier.height(6.dp))
+            Text(
+                text = title,
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.Bold,
+                color = color,
+                textAlign = TextAlign.Center,
+                maxLines = 2
             )
         }
     }

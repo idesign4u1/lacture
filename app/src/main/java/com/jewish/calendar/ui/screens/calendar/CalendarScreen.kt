@@ -1,6 +1,8 @@
 package com.jewish.calendar.ui.screens.calendar
 
+import android.content.Intent
 import android.content.res.Configuration
+import android.provider.CalendarContract
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.*
 import androidx.compose.foundation.*
@@ -18,6 +20,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -47,6 +50,36 @@ fun CalendarScreen(
         uiState.selectedDate?.let { dailyStudyViewModel.loadStudyForDate(it.gregorianDate) }
     }
 
+    val context = LocalContext.current
+
+    // Opens the system Google Calendar to add the currently selected day as an event
+    val exportToGoogleCalendar: () -> Unit = {
+        val selectedOrToday = uiState.selectedDate ?: uiState.today
+        selectedOrToday?.let { dateModel ->
+            val greg = dateModel.gregorianDate
+            val calStart = Calendar.getInstance().apply {
+                time = greg
+                set(Calendar.HOUR_OF_DAY, 0)
+                set(Calendar.MINUTE, 0)
+                set(Calendar.SECOND, 0)
+            }
+            val title = buildString {
+                append(dateModel.hebrewDateString)
+                dateModel.holidayName?.let { append(" — $it") }
+                dateModel.parshaName?.let { if (isNotEmpty()) append(" | ") ; append("פרשת $it") }
+            }
+            val intent = Intent(Intent.ACTION_INSERT).apply {
+                data = CalendarContract.Events.CONTENT_URI
+                putExtra(CalendarContract.Events.TITLE, title)
+                putExtra(CalendarContract.EXTRA_EVENT_BEGIN_TIME, calStart.timeInMillis)
+                putExtra(CalendarContract.EXTRA_EVENT_END_TIME, calStart.timeInMillis + 86_400_000L)
+                putExtra(CalendarContract.Events.ALL_DAY, true)
+                putExtra(CalendarContract.Events.DESCRIPTION, "לוח עברי — ${dateModel.hebrewDateString}")
+            }
+            try { context.startActivity(intent) } catch (_: Exception) { }
+        }
+    }
+
     Scaffold(
         topBar = {
             CalendarTopBar(
@@ -54,7 +87,8 @@ fun CalendarScreen(
                 month = uiState.displayMonth,
                 onPreviousMonth = { viewModel.navigateMonth(false) },
                 onNextMonth = { viewModel.navigateMonth(true) },
-                onTodayClick = { viewModel.goToToday() }
+                onTodayClick = { viewModel.goToToday() },
+                onExportToCalendar = exportToGoogleCalendar
             )
         }
         // FAB removed — "הוסף אירוע" lives inline inside the day-details panel
@@ -215,7 +249,8 @@ private fun CalendarTopBar(
     month: Int,
     onPreviousMonth: () -> Unit,
     onNextMonth: () -> Unit,
-    onTodayClick: () -> Unit
+    onTodayClick: () -> Unit,
+    onExportToCalendar: () -> Unit = {}
 ) {
     val monthNames = listOf(
         "ינואר", "פברואר", "מרץ", "אפריל", "מאי", "יוני",
@@ -231,6 +266,14 @@ private fun CalendarTopBar(
             )
         },
         actions = {
+            // Export selected day to Google Calendar
+            IconButton(onClick = onExportToCalendar) {
+                Icon(
+                    Icons.Default.EventAvailable,
+                    contentDescription = "ייצוא ליומן Google",
+                    tint = MaterialTheme.colorScheme.primary
+                )
+            }
             TextButton(onClick = onTodayClick) {
                 Text("היום", color = MaterialTheme.colorScheme.primary)
             }

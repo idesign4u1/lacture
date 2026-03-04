@@ -47,6 +47,7 @@ import com.jewish.calendar.ui.screens.tools.SpiritualTrackingScreen
 import com.jewish.calendar.ui.screens.tools.TikkunHaklaliScreen
 import com.jewish.calendar.ui.screens.tools.TorahScreen
 import com.jewish.calendar.ui.screens.tools.MishnaScreen
+import com.jewish.calendar.ui.screens.tools.SynagogueMapScreen
 import com.jewish.calendar.ui.screens.tools.ToolsScreen
 import com.jewish.calendar.ui.screens.auth.OnboardingDialog
 import com.jewish.calendar.ui.screens.zmanim.ZmanimScreen
@@ -73,6 +74,7 @@ private const val ROUTE_CHALLA            = "challa"
 private const val ROUTE_SPIRITUAL_TRACKING = "spiritual_tracking"
 private const val ROUTE_TORAH              = "torah"
 private const val ROUTE_MISHNA             = "mishna"
+private const val ROUTE_SYNAGOGUE_MAP      = "synagogue_map"
 
 // ── Bottom-nav screens ────────────────────────────────────────────────
 
@@ -100,7 +102,8 @@ private val routesWithoutBottomBar = setOf(
     ROUTE_COMPASS, ROUTE_KOTEL, ROUTE_SIDDUR, ROUTE_TIKKUN, ROUTE_GEMATRIA,
     ROUTE_OMER, ROUTE_PSALMS, ROUTE_DAILY_INSPIRATION, ROUTE_GRATITUDE,
     ROUTE_SHALOM_BAYIT, ROUTE_SPECIAL_PRAYERS, ROUTE_BLESSINGS,
-    ROUTE_CHALLA, ROUTE_SPIRITUAL_TRACKING, ROUTE_TORAH, ROUTE_MISHNA
+    ROUTE_CHALLA, ROUTE_SPIRITUAL_TRACKING, ROUTE_TORAH, ROUTE_MISHNA,
+    ROUTE_SYNAGOGUE_MAP
 )
 
 // ── Root ──────────────────────────────────────────────────────────────
@@ -208,7 +211,8 @@ private fun MainNavigation(authViewModel: AuthViewModel, isFemale: Boolean) {
                     onNavigateToChalla            = { navController.navigate(ROUTE_CHALLA) },
                     onNavigateToSpiritualTracking = { navController.navigate(ROUTE_SPIRITUAL_TRACKING) },
                     onNavigateToTorah             = { navController.navigate(ROUTE_TORAH) },
-                    onNavigateToMishna            = { navController.navigate(ROUTE_MISHNA) }
+                    onNavigateToMishna            = { navController.navigate(ROUTE_MISHNA) },
+                    onNavigateToSynagogueMap      = { navController.navigate(ROUTE_SYNAGOGUE_MAP) }
                 )
             }
             // Tool sub-screens (no bottom bar)
@@ -228,6 +232,7 @@ private fun MainNavigation(authViewModel: AuthViewModel, isFemale: Boolean) {
             composable(ROUTE_SPIRITUAL_TRACKING)  { SpiritualTrackingScreen(onBack = { navController.popBackStack() }) }
             composable(ROUTE_TORAH)               { TorahScreen(onBack = { navController.popBackStack() }) }
             composable(ROUTE_MISHNA)              { MishnaScreen(onBack = { navController.popBackStack() }) }
+            composable(ROUTE_SYNAGOGUE_MAP)       { SynagogueMapScreen(onBack = { navController.popBackStack() }) }
 
             composable(Screen.Profile.route) {
                 ProfileScreen(
