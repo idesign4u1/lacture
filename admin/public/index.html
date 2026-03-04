@@ -4,51 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>⚙️ מערכת ניהול — לוח שנה יהודי</title>
-<!-- Firebase JS SDK (modular v10) -->
-<script type="module">
-import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
-import {
-  getFirestore, doc, setDoc, onSnapshot, getDoc
-} from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
-import {
-  getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut
-} from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
-
-const FIREBASE_CONFIG = {
-  apiKey:            "AIzaSyDEZCxAPkxTCBSU7yoGzplEm0Zeytn4Hmg",
-  authDomain:        "yehuda-calendar.firebaseapp.com",
-  projectId:         "yehuda-calendar",
-  storageBucket:     "yehuda-calendar.firebasestorage.app",
-  messagingSenderId: "602362222750",
-  appId:             "1:602362222750:android:4640cce97ff4ac99cf038f"
-};
-
-const COL = "app_content";
-
-let app_fb, db, auth;
-try {
-  app_fb = initializeApp(FIREBASE_CONFIG);
-  db     = getFirestore(app_fb);
-  auth   = getAuth(app_fb);
-} catch(e) {
-  console.warn('Firebase init failed, running in local-only mode:', e.message);
-}
-
-// ── Make Firestore helpers available globally ─────────────────────────
-window._fb = { db, auth, doc, setDoc, onSnapshot, getDoc, signInWithEmailAndPassword, signOut, onAuthStateChanged, COL };
-
-// ── Auth state ────────────────────────────────────────────────────────
-if (auth) {
-  onAuthStateChanged(auth, user => {
-    window._fbUser = user;
-    document.getElementById('auth-status').textContent = user
-      ? `✓ מחובר כ-${user.email}`
-      : '⚠ לא מחובר — שינויים יישמרו מקומית בלבד';
-    document.getElementById('auth-status').style.color = user ? '#16a34a' : '#d97706';
-    if (user) window._loadAllContent();
-  });
-}
-</script>
 <style>
 :root{--primary:#003E7E;--primary-light:#0055aa;--bg:#f4f6fb;--surface:#fff;--border:#dde3ee;--text:#1a1a2e;--muted:#6b7280;--success:#16a34a;--error:#dc2626;--r:12px;--sh:0 2px 12px rgba(0,0,0,.08)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -130,8 +85,7 @@ hr{border:none;border-top:1px solid var(--border);margin:14px 0}
 <header>
   <h1>⚙️ מערכת ניהול — לוח שנה יהודי</h1>
   <div class="auth-bar">
-    <span id="auth-status" style="color:var(--muted)">⏳ מאמת...</span>
-    <button class="btn btn-sm btn-outline" style="background:rgba(255,255,255,.15);color:#fff;border-color:rgba(255,255,255,.3)" onclick="showAuth()">🔑 כניסה</button>
+    <span id="auth-status" style="color:var(--muted)">⏳ בדיקת חיבור...</span>
   </div>
 </header>
 
@@ -255,9 +209,9 @@ hr{border:none;border-top:1px solid var(--border);margin:14px 0}
     </div>
     <div class="card">
       <div class="card-title">🔥 Firebase Firestore</div>
-      <p style="font-size:.85rem;color:var(--muted);margin-bottom:10px">לאחר כניסה, כל השינויים בברכות, תפילות, שלום בית, חלה ומעקב רוחני מתעדכנים ב-Firestore ומשתקפים מיידית באפליקציה.</p>
+      <p style="font-size:.85rem;color:var(--muted);margin-bottom:10px">כל השינויים נשמרים ב-Firestore דרך השרת המקומי — ומשתקפים מיידית באפליקציה.</p>
+      <p style="font-size:.85rem;color:var(--muted);margin-bottom:10px">כדי לחבר: שים את קובץ <strong>service-account.json</strong> בתיקיית <code>admin/</code> והפעל מחדש את השרת.</p>
       <button class="btn btn-outline btn-sm" onclick="seedFirestore()">🌱 טען נתונים ל-Firestore מהקבצים המקומיים</button>
-      <p style="font-size:.78rem;color:var(--muted);margin-top:6px">* נדרשת כניסה ראשונה. ניתן להשתמש גם ללא Firestore — שינויים יישמרו בקבצי JSON.</p>
     </div>
   </div>
 </div>
@@ -268,19 +222,6 @@ hr{border:none;border-top:1px solid var(--border);margin:14px 0}
   <span id="save-ind" style="font-size:.82rem;color:var(--muted)"></span>
 </div>
 
-<!-- Auth modal -->
-<div id="auth-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;display:flex;align-items:center;justify-content:center">
-  <div class="card" style="width:340px;max-width:95vw;display:flex;flex-direction:column;gap:12px">
-    <div class="card-title">🔑 כניסת מנהל</div>
-    <div class="field-row"><label>אימייל</label><input type="email" id="auth-email" placeholder="admin@example.com"></div>
-    <div class="field-row"><label>סיסמה</label><input type="password" id="auth-pass" placeholder="••••••••"></div>
-    <div style="display:flex;gap:8px">
-      <button class="btn btn-primary" onclick="doLogin()">כניסה</button>
-      <button class="btn btn-outline" onclick="document.getElementById('auth-modal').style.display='none'">ביטול</button>
-    </div>
-    <p id="auth-err" style="font-size:.82rem;color:var(--error);display:none"></p>
-  </div>
-</div>
 
 <!-- Toast -->
 <div id="toast"></div>
@@ -289,11 +230,10 @@ hr{border:none;border-top:1px solid var(--border);margin:14px 0}
 // ═══════════════════════════════════════════════════════════════════════
 // State
 // ═══════════════════════════════════════════════════════════════════════
-let config   = null;  // local tool-visibility config
-let content  = {};    // { blessings:[], prayers:[], shalom_tips:[], shalom_verses:[], challa_steps:[], challa_recipes:[], tracking:[] }
-let saveTimers = {};  // debounce timers per section
-let unsubs   = [];    // Firestore unsubscribe functions
-let editingRow = {};  // { sectionId: itemIndex }
+let config     = null;
+let content    = {};
+let saveTimers = {};
+let editingRow = {};
 
 const COLORS = [
   {name:'כחול כהה',hex:'#003E7E'},{name:'כחול',hex:'#1565C0'},{name:'ירוק',hex:'#2E7D32'},
@@ -305,14 +245,27 @@ const COLORS = [
 // Boot
 // ═══════════════════════════════════════════════════════════════════════
 window.addEventListener('DOMContentLoaded', async () => {
+  await checkFirestoreStatus();
   await loadConfig();
   await loadGitStatus();
   renderColors();
-  // Register global content loader (called when Firebase auth succeeds)
-  window._loadAllContent = loadAllContent;
-  // Also load from local assets as fallback immediately
-  await loadAllContentLocal();
+  await loadAllContentFromServer();
 });
+
+async function checkFirestoreStatus() {
+  try {
+    const r = await fetch('/api/firestore/status');
+    const d = await r.json();
+    const el = document.getElementById('auth-status');
+    if (d.connected) {
+      el.textContent = '🔥 Firestore מחובר — שינויים מתעדכנים בזמן אמת';
+      el.style.color = '#16a34a';
+    } else {
+      el.textContent = '📁 מצב מקומי — הוסף service-account.json לחיבור Firestore';
+      el.style.color = '#d97706';
+    }
+  } catch(_) {}
+}
 
 // ═══════════════════════════════════════════════════════════════════════
 // Config (tool visibility)
@@ -335,68 +288,93 @@ async function saveConfig() {
 }
 
 // ═══════════════════════════════════════════════════════════════════════
-// Content — load from Firestore (live) or local JSON (fallback)
+// Content — load via server (Firestore if connected, else local JSON)
 // ═══════════════════════════════════════════════════════════════════════
-async function loadAllContentLocal() {
+async function loadAllContentFromServer() {
+  // Try Firestore first (server-side), fall back to asset files
+  const fsData = {
+    blessings:      await fsGet('blessings'),
+    prayers:        await fsGet('special_prayers'),
+    shalomTips:     await fsGet('shalom_bayit_tips'),
+    shalomVerses:   await fsGet('shalom_bayit_verses'),
+    challaSteps:    await fsGet('challa_steps'),
+    challaRecipes:  await fsGet('challa_recipes'),
+    tracking:       await fsGet('spiritual_tracking'),
+    dailyMessages:  await fsGet('daily_messages'),
+    botWelcome:     await fsGet('bot_welcome')
+  };
+
+  // Use Firestore data if available, else fallback to asset JSON
+  if (fsData.blessings?.items?.length) {
+    content.blessings = fsData.blessings.items;
+  } else {
+    content.blessings = await fetchAsset('blessings.json') || [];
+  }
+
+  if (fsData.prayers?.items?.length) {
+    content.prayers = fsData.prayers.items;
+  } else {
+    content.prayers = await fetchAsset('special_prayers.json') || [];
+  }
+
+  if (fsData.shalomTips?.items?.length) {
+    content.shalom_tips = fsData.shalomTips.items;
+  } else {
+    const sb = await fetchAsset('shalom_bayit.json');
+    content.shalom_tips = sb?.tips || [];
+  }
+
+  if (fsData.shalomVerses?.verses?.length) {
+    content.shalom_verses = fsData.shalomVerses.verses;
+  } else {
+    const sb = await fetchAsset('shalom_bayit.json');
+    content.shalom_verses = sb?.verses || [];
+  }
+
+  if (fsData.challaSteps?.items?.length) {
+    content.challa_steps = fsData.challaSteps.items;
+  } else {
+    const ch = await fetchAsset('challa.json');
+    content.challa_steps = ch?.steps || [];
+  }
+
+  if (fsData.challaRecipes?.items?.length) {
+    content.challa_recipes = fsData.challaRecipes.items;
+  } else {
+    const ch = await fetchAsset('challa.json');
+    content.challa_recipes = ch?.recipes || [];
+  }
+
+  if (fsData.tracking?.items?.length) {
+    content.tracking = fsData.tracking.items;
+  } else {
+    content.tracking = await fetchAsset('spiritual_tracking.json') || [];
+  }
+
+  if (fsData.dailyMessages?.items) {
+    document.getElementById('daily-msgs').value = fsData.dailyMessages.items.join('\n');
+  }
+  if (fsData.botWelcome?.text) {
+    document.getElementById('bot-welcome').value = fsData.botWelcome.text;
+  }
+
+  renderAllContent();
+}
+
+async function fsGet(docName) {
   try {
-    const files = {
-      blessings: await fetchAsset('blessings.json'),
-      prayers:   await fetchAsset('special_prayers.json'),
-      shalom:    await fetchAsset('shalom_bayit.json'),
-      challa:    await fetchAsset('challa.json'),
-      tracking:  await fetchAsset('spiritual_tracking.json')
-    };
-    content.blessings      = files.blessings || [];
-    content.prayers        = files.prayers   || [];
-    content.shalom_tips    = files.shalom?.tips   || [];
-    content.shalom_verses  = files.shalom?.verses || [];
-    content.challa_steps   = files.challa?.steps   || [];
-    content.challa_recipes = files.challa?.recipes || [];
-    content.tracking       = files.tracking  || [];
-    renderAllContent();
-  } catch(e) { console.warn('Local content load failed:', e); }
+    const r = await fetch('/api/firestore/' + docName);
+    if (!r.ok) return null;
+    const d = await r.json();
+    return Object.keys(d).length ? d : null;
+  } catch(e) { return null; }
 }
 
 async function fetchAsset(file) {
   try {
     const r = await fetch('/api/assets/' + file);
-    if (!r.ok) return null;
-    return await r.json();
+    return r.ok ? await r.json() : null;
   } catch(e) { return null; }
-}
-
-async function loadAllContent() {
-  // Subscribe to Firestore real-time updates
-  const {db, doc, onSnapshot, COL} = window._fb;
-  if (!db) { await loadAllContentLocal(); return; }
-
-  const sections = ['blessings','special_prayers','shalom_bayit_tips','challa_steps','challa_recipes','spiritual_tracking','daily_messages','bot_welcome'];
-  unsubs.forEach(u => u());
-  unsubs = [];
-
-  sections.forEach(sec => {
-    const ref = doc(db, COL, sec);
-    const unsub = onSnapshot(ref, snap => {
-      if (!snap.exists()) return;
-      const data = snap.data();
-      applyFirestoreSection(sec, data);
-    }, err => console.warn('Firestore listen error:', sec, err));
-    unsubs.push(unsub);
-  });
-}
-
-function applyFirestoreSection(sec, data) {
-  switch(sec) {
-    case 'blessings':       content.blessings      = data.items || []; break;
-    case 'special_prayers': content.prayers        = data.items || []; break;
-    case 'shalom_bayit_tips': content.shalom_tips  = data.items || []; break;
-    case 'challa_steps':    content.challa_steps   = data.items || []; break;
-    case 'challa_recipes':  content.challa_recipes = data.items || []; break;
-    case 'spiritual_tracking': content.tracking    = data.items || []; break;
-    case 'daily_messages':  document.getElementById('daily-msgs').value = (data.items||[]).join('\n'); break;
-    case 'bot_welcome':     document.getElementById('bot-welcome').value = data.text || ''; break;
-  }
-  renderAllContent();
 }
 
 function renderAllContent() {
@@ -410,34 +388,32 @@ function renderAllContent() {
 }
 
 // ═══════════════════════════════════════════════════════════════════════
-// Save to Firestore + local asset
+// Save — server handles Firestore + local JSON
 // ═══════════════════════════════════════════════════════════════════════
 async function saveSection(sectionKey) {
-  const {db, doc, setDoc, COL} = window._fb || {};
-
-  // Map section key → Firestore doc name + payload + local file
   const map = {
-    blessings:      { fsDoc:'blessings',       payload:{items: content.blessings},     localFile:'blessings.json',        localPayload:() => content.blessings },
-    prayers:        { fsDoc:'special_prayers', payload:{items: content.prayers},        localFile:'special_prayers.json',  localPayload:() => content.prayers },
-    shalom_tips:    { fsDoc:'shalom_bayit_tips', payload:{items: content.shalom_tips},  localFile:'shalom_bayit.json',     localPayload:() => ({tips: content.shalom_tips, verses: content.shalom_verses}) },
-    shalom_verses:  { fsDoc:'shalom_bayit_verses', payload:{verses: content.shalom_verses}, localFile:'shalom_bayit.json', localPayload:() => ({tips: content.shalom_tips, verses: content.shalom_verses}) },
-    challa_steps:   { fsDoc:'challa_steps',    payload:{items: content.challa_steps},   localFile:'challa.json',           localPayload:() => ({steps: content.challa_steps, recipes: content.challa_recipes}) },
-    challa_recipes: { fsDoc:'challa_recipes',  payload:{items: content.challa_recipes}, localFile:'challa.json',           localPayload:() => ({steps: content.challa_steps, recipes: content.challa_recipes}) },
-    tracking:       { fsDoc:'spiritual_tracking', payload:{items: content.tracking},   localFile:'spiritual_tracking.json', localPayload:() => content.tracking },
-    daily_messages: { fsDoc:'daily_messages',  payload:{items: document.getElementById('daily-msgs').value.split('\n').map(s=>s.trim()).filter(Boolean)}, localFile:null },
-    bot_welcome:    { fsDoc:'bot_welcome',     payload:{text: document.getElementById('bot-welcome').value.trim()}, localFile:null }
+    blessings:      { fsDoc:'blessings',            fsPayload:{items:content.blessings},       localFile:'blessings.json',        localPayload:()=>content.blessings },
+    prayers:        { fsDoc:'special_prayers',       fsPayload:{items:content.prayers},          localFile:'special_prayers.json',  localPayload:()=>content.prayers },
+    shalom_tips:    { fsDoc:'shalom_bayit_tips',     fsPayload:{items:content.shalom_tips},      localFile:'shalom_bayit.json',     localPayload:()=>({tips:content.shalom_tips,verses:content.shalom_verses}) },
+    shalom_verses:  { fsDoc:'shalom_bayit_verses',   fsPayload:{verses:content.shalom_verses},   localFile:'shalom_bayit.json',     localPayload:()=>({tips:content.shalom_tips,verses:content.shalom_verses}) },
+    challa_steps:   { fsDoc:'challa_steps',          fsPayload:{items:content.challa_steps},     localFile:'challa.json',           localPayload:()=>({steps:content.challa_steps,recipes:content.challa_recipes}) },
+    challa_recipes: { fsDoc:'challa_recipes',        fsPayload:{items:content.challa_recipes},   localFile:'challa.json',           localPayload:()=>({steps:content.challa_steps,recipes:content.challa_recipes}) },
+    tracking:       { fsDoc:'spiritual_tracking',    fsPayload:{items:content.tracking},         localFile:'spiritual_tracking.json', localPayload:()=>content.tracking },
+    daily_messages: { fsDoc:'daily_messages',        fsPayload:{items:document.getElementById('daily-msgs').value.split('\n').map(s=>s.trim()).filter(Boolean)}, localFile:null },
+    bot_welcome:    { fsDoc:'bot_welcome',           fsPayload:{text:document.getElementById('bot-welcome').value.trim()}, localFile:null }
   };
 
   const m = map[sectionKey];
   if (!m) return;
 
-  // Save to Firestore
-  if (db && window._fbUser) {
-    try {
-      await setDoc(doc(db, COL, m.fsDoc), m.payload, {merge:true});
-      document.getElementById('tools-live-badge') && setSaveInd('✓ נשמר ב-Firestore — האפליקציה מתעדכנת מיד');
-    } catch(e) { console.warn('Firestore save error:', e); }
-  }
+  // Save to Firestore via server
+  try {
+    await fetch('/api/firestore/' + m.fsDoc, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(m.fsPayload)
+    });
+    setSaveInd('✓ נשמר — האפליקציה מתעדכנת מיד');
+  } catch(e) { console.warn('Firestore save error:', e); }
 
   // Also save to local JSON asset (for git)
   if (m.localFile) {
@@ -708,48 +684,15 @@ async function gitPush() {
 }
 
 // ═══════════════════════════════════════════════════════════════════════
-// Seed Firestore from local JSON
+// Seed Firestore from local JSON (via server)
 // ═══════════════════════════════════════════════════════════════════════
 async function seedFirestore() {
-  const {db, doc, setDoc, COL} = window._fb || {};
-  if (!db || !window._fbUser) { toast('נדרשת כניסה תחילה', 'error'); return; }
-
-  const seeds = [
-    { fsDoc:'blessings',          payload:{items: content.blessings} },
-    { fsDoc:'special_prayers',    payload:{items: content.prayers} },
-    { fsDoc:'shalom_bayit_tips',  payload:{items: content.shalom_tips} },
-    { fsDoc:'shalom_bayit_verses',payload:{verses: content.shalom_verses} },
-    { fsDoc:'challa_steps',       payload:{items: content.challa_steps} },
-    { fsDoc:'challa_recipes',     payload:{items: content.challa_recipes} },
-    { fsDoc:'spiritual_tracking', payload:{items: content.tracking} },
-    { fsDoc:'daily_messages',     payload:{items: []} },
-    { fsDoc:'bot_welcome',        payload:{text: ''} }
-  ];
-
-  let ok=0;
-  for (const s of seeds) {
-    try { await setDoc(doc(db,COL,s.fsDoc), s.payload); ok++; } catch(e) { console.warn(s.fsDoc, e); }
-  }
-  toast(`✓ ${ok}/${seeds.length} מסמכים הועלו ל-Firestore`, 'success');
-}
-
-// ═══════════════════════════════════════════════════════════════════════
-// Auth
-// ═══════════════════════════════════════════════════════════════════════
-function showAuth() { document.getElementById('auth-modal').style.display='flex'; }
-async function doLogin() {
-  const {auth, signInWithEmailAndPassword} = window._fb || {};
-  if (!auth) { toast('Firebase לא מוגדר', 'error'); return; }
-  const email = document.getElementById('auth-email').value;
-  const pass  = document.getElementById('auth-pass').value;
   try {
-    await signInWithEmailAndPassword(auth, email, pass);
-    document.getElementById('auth-modal').style.display='none';
-    toast('✓ התחברת בהצלחה', 'success');
-  } catch(e) {
-    const errEl = document.getElementById('auth-err');
-    errEl.textContent = e.message; errEl.style.display='block';
-  }
+    const r = await fetch('/api/firestore/seed', {method:'POST'});
+    const d = await r.json();
+    if (d.ok) { toast('✓ ' + d.message, 'success'); await loadAllContentFromServer(); }
+    else toast('שגיאה: ' + d.error, 'error');
+  } catch(e) { toast('שגיאה: ' + e.message, 'error'); }
 }
 
 // ═══════════════════════════════════════════════════════════════════════
