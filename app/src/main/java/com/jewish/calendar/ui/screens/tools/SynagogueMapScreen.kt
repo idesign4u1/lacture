@@ -191,7 +191,7 @@ fun SynagogueMapScreen(onBack: () -> Unit) {
                             snippet = syn.address.ifBlank { null },
                             icon = BitmapDescriptorFactory.defaultMarker(
                                 if (selectedSynagogue?.id == syn.id)
-                                    BitmapDescriptorFactory.HUE_GOLD
+                                    BitmapDescriptorFactory.HUE_YELLOW
                                 else
                                     BitmapDescriptorFactory.HUE_AZURE
                             ),
