@@ -1,7 +1,6 @@
 package com.jewish.calendar.ui.screens.profile
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -14,7 +13,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
@@ -25,18 +23,15 @@ import com.jewish.calendar.ui.theme.ShabbatBlue
 import com.jewish.calendar.viewmodel.ProfileViewModel
 import java.text.SimpleDateFormat
 import java.util.*
-import androidx.compose.foundation.text.KeyboardOptions
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfileScreen(
     onSignOut: () -> Unit,
     onProfileSaved: () -> Unit = {},
-    onNavigateToAdmin: () -> Unit = {},
     viewModel: ProfileViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    val scope = rememberCoroutineScope()
 
     // Form state - initialised from the loaded user
     var displayName by remember(uiState.user) { mutableStateOf(uiState.user?.displayName ?: "") }
@@ -46,20 +41,6 @@ fun ProfileScreen(
 
     var showDatePicker by remember { mutableStateOf(false) }
     var showPasswordDialog by remember { mutableStateOf(false) }
-
-    // ── Hidden admin access: 5 taps on avatar ────────────────────────
-    var adminTapCount by remember { mutableIntStateOf(0) }
-    var showAdminPinDialog by remember { mutableStateOf(false) }
-    LaunchedEffect(adminTapCount) {
-        if (adminTapCount in 1..4) {
-            kotlinx.coroutines.delay(2000)
-            adminTapCount = 0
-        }
-        if (adminTapCount >= 5) {
-            adminTapCount = 0
-            showAdminPinDialog = true
-        }
-    }
 
     // Dismiss success after a moment + notify parent for Tahara tab refresh
     LaunchedEffect(uiState.saveSuccess) {
@@ -99,13 +80,12 @@ fun ProfileScreen(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
 
-            // ── Avatar (tap 5× to open admin PIN dialog) ─────────────
+            // ── Avatar ──────────────────────────────────────────────
             Box(
                 modifier = Modifier
                     .size(80.dp)
                     .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.primaryContainer)
-                    .clickable { adminTapCount++ },
+                    .background(MaterialTheme.colorScheme.primaryContainer),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
@@ -119,19 +99,8 @@ fun ProfileScreen(
                 text = uiState.user?.email ?: "",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(top = 4.dp, bottom = if (adminTapCount > 0) 4.dp else 16.dp)
+                modifier = Modifier.padding(top = 4.dp, bottom = 16.dp)
             )
-            // Subtle tap-count hint
-            if (adminTapCount in 1..4) {
-                Text(
-                    text = "${5 - adminTapCount} הקשות נוספות לגישת מנהל",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                    modifier = Modifier.padding(bottom = 12.dp)
-                )
-            } else {
-                Spacer(Modifier.height(if (adminTapCount == 0) 0.dp else 12.dp))
-            }
 
             // ── Success / Error banners ──────────────────────────────
             if (uiState.saveSuccess) {
@@ -290,25 +259,6 @@ fun ProfileScreen(
             isSaving = uiState.isSaving,
             onConfirm = { current, new -> viewModel.changePassword(current, new) },
             onDismiss = { showPasswordDialog = false }
-        )
-    }
-
-    // ── Admin PIN dialog ─────────────────────────────────────────────
-    if (showAdminPinDialog) {
-        AdminPinDialog(
-            onConfirm = { pin ->
-                scope.launch {
-                    val ok = viewModel.checkAdminPin(pin)
-                    if (ok) {
-                        showAdminPinDialog = false
-                        onNavigateToAdmin()
-                    } else {
-                        showAdminPinDialog = false
-                        // Wrong PIN — just dismiss silently
-                    }
-                }
-            },
-            onDismiss = { showAdminPinDialog = false }
         )
     }
 }
@@ -489,49 +439,6 @@ private fun ChangePasswordDialog(
             }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("ביטול") } }
-    )
-}
-
-@Composable
-private fun AdminPinDialog(
-    onConfirm: (String) -> Unit,
-    onDismiss: () -> Unit
-) {
-    var pin by remember { mutableStateOf("") }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("⚙️ גישת מנהל", textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth()) },
-        text = {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(
-                    "הכנס PIN לכניסה למצב ניהול",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.fillMaxWidth()
-                )
-                Spacer(Modifier.height(12.dp))
-                OutlinedTextField(
-                    value = pin,
-                    onValueChange = { if (it.length <= 4 && it.all { c -> c.isDigit() }) pin = it },
-                    label = { Text("PIN (4 ספרות)") },
-                    visualTransformation = PasswordVisualTransformation(),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-        },
-        confirmButton = {
-            Button(
-                onClick = { onConfirm(pin) },
-                enabled = pin.length == 4
-            ) { Text("כניסה") }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text("ביטול") }
-        }
     )
 }
 

@@ -1,0 +1,29 @@
+{
+  "tools": [
+    { "id": "siddur",            "emoji": "📖", "titleHe": "סידור תפילה",    "category": "תפילה",        "visible": true },
+    { "id": "special_prayers",   "emoji": "🙏", "titleHe": "תפילות מיוחדות", "category": "תפילה",        "visible": true },
+    { "id": "blessings",         "emoji": "✡",  "titleHe": "ברכות יומיות",   "category": "תפילה",        "visible": true },
+    { "id": "tikkun",            "emoji": "📜", "titleHe": "תיקון הכללי",    "category": "תפילה",        "visible": true },
+    { "id": "torah",             "emoji": "🕍", "titleHe": "תּוֹרָה",          "category": "לימוד תורה",   "visible": true },
+    { "id": "mishna",            "emoji": "📚", "titleHe": "מִשְׁנָה",         "category": "לימוד תורה",   "visible": true },
+    { "id": "psalms",            "emoji": "📜", "titleHe": "תהילים",           "category": "לימוד תורה",   "visible": true },
+    { "id": "omer",              "emoji": "🌾", "titleHe": "ספירת העומר",      "category": "לימוד תורה",   "visible": true },
+    { "id": "gematria",          "emoji": "🔢", "titleHe": "גימטרייה",         "category": "לימוד תורה",   "visible": true },
+    { "id": "daily_inspiration", "emoji": "⭐", "titleHe": "חיזוק יומי",       "category": "חיזוק רוחני",  "visible": true },
+    { "id": "gratitude",         "emoji": "🌸", "titleHe": "יומן הודיה",       "category": "חיזוק רוחני",  "visible": true },
+    { "id": "shalom_bayit",      "emoji": "💑", "titleHe": "שלום בית",         "category": "חיזוק רוחני",  "visible": true },
+    { "id": "spiritual_tracking","emoji": "📊", "titleHe": "מעקב רוחני",       "category": "חיזוק רוחני",  "visible": true },
+    { "id": "compass",           "emoji": "✡",  "titleHe": "מצפן ירושלים",    "category": "כלים",         "visible": true },
+    { "id": "kotel",             "emoji": "🕍", "titleHe": "הכותל המערבי",     "category": "כלים",         "visible": true },
+    { "id": "synagogue_map",     "emoji": "🗺️", "titleHe": "בתי כנסת",         "category": "כלים",         "visible": true },
+    { "id": "challa",            "emoji": "🫓", "titleHe": "הפרשת חלה",        "category": "כלים",         "visible": true }
+  ],
+  "theme": {
+    "primaryColor": "#003E7E",
+    "primaryColorName": "כחול כהה"
+  },
+  "content": {
+    "dailyMessages": [],
+    "botWelcomeText": ""
+  }
+}

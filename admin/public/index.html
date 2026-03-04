@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>⚙️ מערכת ניהול — לוח שנה יהודי</title>
+<style>
+  :root {
+    --primary: #003E7E;
+    --primary-light: #0055aa;
+    --bg: #f4f6fb;
+    --surface: #ffffff;
+    --border: #dde3ee;
+    --text: #1a1a2e;
+    --text-muted: #6b7280;
+    --success: #16a34a;
+    --error: #dc2626;
+    --gold: #c59b00;
+    --radius: 12px;
+    --shadow: 0 2px 12px rgba(0,0,0,0.08);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Segoe UI', 'Arial Hebrew', Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    direction: rtl;
+  }
+
+  /* ── Header ── */
+  header {
+    background: linear-gradient(135deg, var(--primary) 0%, #001f5b 100%);
+    color: white;
+    padding: 0 24px;
+    height: 64px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+  }
+  header h1 { font-size: 1.3rem; font-weight: 700; }
+  header .git-info { font-size: 0.8rem; opacity: 0.75; display: flex; align-items: center; gap: 8px; }
+  .git-branch { background: rgba(255,255,255,0.15); padding: 3px 10px; border-radius: 20px; }
+
+  /* ── Layout ── */
+  .container { max-width: 1100px; margin: 0 auto; padding: 24px 16px; }
+
+  /* ── Tabs ── */
+  .tabs { display: flex; gap: 4px; background: var(--surface); border-radius: var(--radius); padding: 6px; margin-bottom: 24px; box-shadow: var(--shadow); }
+  .tab { flex: 1; padding: 10px 16px; border: none; background: none; border-radius: 9px; cursor: pointer; font-size: 0.95rem; font-weight: 600; color: var(--text-muted); transition: all 0.2s; font-family: inherit; }
+  .tab:hover { background: var(--bg); }
+  .tab.active { background: var(--primary); color: white; box-shadow: 0 2px 8px rgba(0,62,126,0.3); }
+
+  /* ── Panel ── */
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  /* ── Cards ── */
+  .card { background: var(--surface); border-radius: var(--radius); padding: 20px; margin-bottom: 16px; box-shadow: var(--shadow); border: 1px solid var(--border); }
+  .card-title { font-size: 1rem; font-weight: 700; color: var(--primary); margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+
+  /* ── Tool list ── */
+  .category-label {
+    font-size: 0.75rem; font-weight: 800; color: var(--primary);
+    letter-spacing: 1px; text-transform: uppercase;
+    margin: 16px 0 8px; padding: 0 4px;
+    border-bottom: 2px solid var(--primary); padding-bottom: 4px;
+  }
+  .tool-row {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 14px; border-radius: 10px; margin-bottom: 6px;
+    border: 1px solid var(--border); background: var(--surface);
+    transition: background 0.15s;
+  }
+  .tool-row:hover { background: var(--bg); }
+  .tool-row.hidden-tool { opacity: 0.45; }
+  .tool-emoji { font-size: 1.4rem; width: 32px; text-align: center; }
+  .tool-name { flex: 1; font-weight: 600; font-size: 0.95rem; }
+  .tool-cat { font-size: 0.78rem; color: var(--text-muted); }
+
+  /* ── Toggle switch ── */
+  .toggle { position: relative; width: 44px; height: 24px; flex-shrink: 0; }
+  .toggle input { opacity: 0; width: 0; height: 0; }
+  .slider {
+    position: absolute; inset: 0; background: #d1d5db;
+    border-radius: 12px; cursor: pointer; transition: background 0.2s;
+  }
+  .slider:before {
+    content: ''; position: absolute; width: 18px; height: 18px;
+    background: white; border-radius: 50%;
+    top: 3px; right: 3px; transition: transform 0.2s;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+  }
+  input:checked + .slider { background: var(--primary); }
+  input:checked + .slider:before { transform: translateX(-20px); }
+
+  /* ── Colors ── */
+  .colors-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap: 12px; }
+  .color-swatch {
+    display: flex; flex-direction: column; align-items: center; gap: 6px;
+    cursor: pointer; padding: 8px; border-radius: 10px;
+    border: 2px solid transparent; transition: all 0.15s;
+  }
+  .color-swatch:hover { background: var(--bg); }
+  .color-swatch.selected { border-color: var(--primary); background: #e8eeff; }
+  .swatch-circle {
+    width: 48px; height: 48px; border-radius: 50%;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.2rem;
+  }
+  .swatch-label { font-size: 0.78rem; font-weight: 600; color: var(--text-muted); text-align: center; }
+  .color-swatch.selected .swatch-label { color: var(--primary); }
+
+  /* ── Inputs ── */
+  textarea, input[type="text"] {
+    width: 100%; border: 1.5px solid var(--border); border-radius: 8px;
+    padding: 10px 12px; font-family: inherit; font-size: 0.95rem;
+    resize: vertical; background: var(--bg); color: var(--text);
+    transition: border-color 0.15s;
+  }
+  textarea:focus, input[type="text"]:focus {
+    outline: none; border-color: var(--primary-light);
+    box-shadow: 0 0 0 3px rgba(0,85,170,0.12);
+  }
+  label { font-size: 0.88rem; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 6px; }
+
+  /* ── Buttons ── */
+  .btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 10px 20px; border-radius: 8px; border: none;
+    font-family: inherit; font-size: 0.9rem; font-weight: 700;
+    cursor: pointer; transition: all 0.15s;
+  }
+  .btn-primary { background: var(--primary); color: white; }
+  .btn-primary:hover { background: var(--primary-light); box-shadow: 0 2px 8px rgba(0,62,126,0.4); }
+  .btn-success { background: var(--success); color: white; }
+  .btn-success:hover { background: #15803d; }
+  .btn-outline {
+    background: none; border: 2px solid var(--primary);
+    color: var(--primary);
+  }
+  .btn-outline:hover { background: #e8eeff; }
+  .btn-danger { background: var(--error); color: white; }
+  .btn-danger:hover { background: #b91c1c; }
+
+  /* ── Action bar ── */
+  .action-bar {
+    position: sticky; bottom: 0; background: var(--surface);
+    border-top: 1px solid var(--border); padding: 14px 24px;
+    display: flex; gap: 12px; align-items: center; justify-content: flex-start;
+    box-shadow: 0 -2px 12px rgba(0,0,0,0.07); z-index: 50;
+  }
+
+  /* ── Toast ── */
+  #toast {
+    position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%) translateY(20px);
+    background: #1e293b; color: white; padding: 12px 24px;
+    border-radius: 24px; font-size: 0.9rem; font-weight: 600;
+    opacity: 0; transition: all 0.3s; pointer-events: none; z-index: 999;
+    max-width: 90vw; text-align: center;
+  }
+  #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  #toast.success { background: var(--success); }
+  #toast.error { background: var(--error); }
+
+  /* ── Stats row ── */
+  .stats-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; margin-bottom: 20px; }
+  .stat-card { background: var(--surface); border-radius: var(--radius); padding: 16px; text-align: center; box-shadow: var(--shadow); border: 1px solid var(--border); }
+  .stat-value { font-size: 2rem; font-weight: 800; color: var(--primary); line-height: 1; }
+  .stat-label { font-size: 0.8rem; color: var(--text-muted); margin-top: 4px; }
+
+  /* ── Search ── */
+  .search-box { position: relative; margin-bottom: 12px; }
+  .search-box input { padding-right: 36px; }
+  .search-icon { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); color: var(--text-muted); pointer-events: none; }
+
+  /* ── Divider ── */
+  hr { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
+
+  /* ── Responsive ── */
+  @media (max-width: 600px) {
+    .tabs { flex-wrap: wrap; }
+    .tab { flex: none; width: calc(50% - 2px); }
+    header h1 { font-size: 1.1rem; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>⚙️ מערכת ניהול — לוח שנה יהודי</h1>
+  <div class="git-info">
+    <span id="git-branch" class="git-branch">⏳ טוען...</span>
+    <span id="git-status"></span>
+  </div>
+</header>
+
+<div class="container">
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('tools')">🛠️ כלים</button>
+    <button class="tab" onclick="switchTab('content')">✏️ תוכן</button>
+    <button class="tab" onclick="switchTab('design')">🎨 עיצוב</button>
+    <button class="tab" onclick="switchTab('git')">📤 Git</button>
+  </div>
+
+  <!-- ── Tab: כלים ──────────────────────────────────────────────── -->
+  <div id="panel-tools" class="panel active">
+
+    <div class="stats-row">
+      <div class="stat-card">
+        <div class="stat-value" id="stat-visible">—</div>
+        <div class="stat-label">כלים מוצגים</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="stat-hidden">—</div>
+        <div class="stat-label">כלים מוסתרים</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="stat-total">—</div>
+        <div class="stat-label">סה"כ כלים</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">🛠️ נראות כלים</div>
+      <div class="search-box">
+        <span class="search-icon">🔍</span>
+        <input type="text" id="tool-search" placeholder="חפש כלי..." oninput="renderTools()">
+      </div>
+      <div id="tools-list"></div>
+    </div>
+
+  </div>
+
+  <!-- ── Tab: תוכן ──────────────────────────────────────────────── -->
+  <div id="panel-content" class="panel">
+
+    <div class="card">
+      <div class="card-title">⭐ הודעות חיזוק יומי</div>
+      <label>כל שורה = הודעה נפרדת. ריק = תוכן ברירת מחדל מובנה.</label>
+      <textarea id="daily-messages" rows="12" placeholder="הכנס הודעות חיזוק (שורה לכל הודעה)...&#10;&#10;לדוגמה:&#10;כל יום הוא מתנה חדשה מהשם&#10;צדיק באמונתו יחיה&#10;השם עוזר לכל הקוראים אותו באמת"></textarea>
+    </div>
+
+    <div class="card">
+      <div class="card-title">🤖 טקסט פתיחה — שאל את הרב</div>
+      <label>ריק = טקסט ברירת מחדל.</label>
+      <textarea id="bot-welcome" rows="4" placeholder="שלום! אני כאן לענות על שאלות בהלכה ויהדות..."></textarea>
+    </div>
+
+  </div>
+
+  <!-- ── Tab: עיצוב ──────────────────────────────────────────────── -->
+  <div id="panel-design" class="panel">
+
+    <div class="card">
+      <div class="card-title">🎨 צבע ראשי</div>
+      <p style="font-size:0.88rem;color:var(--text-muted);margin-bottom:16px;">
+        הצבע הראשי משפיע על כפתורים, כותרות וסמלים באפליקציה.
+      </p>
+      <div class="colors-grid" id="colors-grid"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title" style="color:var(--text-muted)">💡 תצוגה מקדימה</div>
+      <div id="color-preview" style="border-radius:10px;padding:16px;display:flex;gap:12px;align-items:center;">
+        <div id="preview-circle" style="width:52px;height:52px;border-radius:50%;flex-shrink:0;"></div>
+        <div>
+          <div id="preview-name" style="font-weight:700;font-size:1rem;"></div>
+          <div id="preview-hex" style="font-size:0.85rem;margin-top:2px;"></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ── Tab: Git ──────────────────────────────────────────────── -->
+  <div id="panel-git" class="panel">
+
+    <div class="card">
+      <div class="card-title">📤 שמור ודחוף ל-Git</div>
+      <p style="font-size:0.9rem;color:var(--text-muted);margin-bottom:16px;">
+        לאחר שמירת השינויים, ניתן לדחוף אותם ל-GitHub כדי לעדכן את ענף הפיתוח.
+        לאחר מכן ניתן למשוך ב-Android Studio.
+      </p>
+      <label>הודעת commit</label>
+      <input type="text" id="commit-message" value="admin: update app configuration" style="margin-bottom:14px;">
+      <div style="display:flex;gap:10px;flex-wrap:wrap;">
+        <button class="btn btn-primary" onclick="saveConfig()">💾 שמור שינויים</button>
+        <button class="btn btn-success" onclick="gitPush()">🚀 שמור ודחוף ל-Git</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">📋 סטטוס Git</div>
+      <div style="display:flex;gap:10px;align-items:center;margin-bottom:12px;">
+        <span style="font-size:0.9rem;">ענף נוכחי:</span>
+        <strong id="git-branch-detail" style="color:var(--primary);">—</strong>
+        <button class="btn btn-outline" style="padding:5px 12px;font-size:0.8rem;" onclick="loadGitStatus()">🔄 רענן</button>
+      </div>
+      <pre id="git-status-detail" style="background:var(--bg);padding:12px;border-radius:8px;font-size:0.85rem;min-height:40px;white-space:pre-wrap;"></pre>
+    </div>
+
+  </div>
+
+</div>
+
+<!-- Action bar -->
+<div class="action-bar">
+  <button class="btn btn-primary" onclick="saveConfig()">💾 שמור שינויים</button>
+  <button class="btn btn-outline" onclick="loadConfig()">↩️ בטל שינויים</button>
+  <span id="save-indicator" style="font-size:0.85rem;color:var(--text-muted);"></span>
+</div>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<script>
+// ── State ────────────────────────────────────────────────────────────
+let config = null;
+
+const COLORS = [
+  { name: 'כחול כהה', hex: '#003E7E' },
+  { name: 'כחול',     hex: '#1565C0' },
+  { name: 'ירוק',     hex: '#2E7D32' },
+  { name: 'סגול',     hex: '#6A1B9A' },
+  { name: 'כהה',      hex: '#37474F' },
+  { name: 'בורדו',    hex: '#880E4F' },
+  { name: 'כתום',     hex: '#E65100' },
+  { name: 'ברונזה',   hex: '#6D4C41' },
+  { name: 'טורקיז',   hex: '#00695C' }
+];
+
+// ── Boot ─────────────────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', async () => {
+  await loadConfig();
+  await loadGitStatus();
+});
+
+// ── Config CRUD ───────────────────────────────────────────────────────
+async function loadConfig() {
+  try {
+    const res = await fetch('/api/config');
+    config = await res.json();
+    renderTools();
+    renderColors();
+    renderContent();
+    updateStats();
+    document.getElementById('save-indicator').textContent = '';
+  } catch (e) {
+    showToast('שגיאה בטעינת הקובץ: ' + e.message, 'error');
+  }
+}
+
+async function saveConfig() {
+  if (!config) return;
+  // Collect current UI state into config
+  collectFromUI();
+  try {
+    const res = await fetch('/api/config', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(config, null, 2)
+    });
+    const data = await res.json();
+    if (data.ok) {
+      showToast('✓ השינויים נשמרו בהצלחה', 'success');
+      document.getElementById('save-indicator').textContent = 'נשמר ' + new Date().toLocaleTimeString('he-IL');
+    } else {
+      showToast('שגיאה: ' + data.error, 'error');
+    }
+  } catch (e) {
+    showToast('שגיאת שמירה: ' + e.message, 'error');
+  }
+}
+
+function collectFromUI() {
+  // Daily messages
+  const msgText = document.getElementById('daily-messages').value.trim();
+  config.content.dailyMessages = msgText
+    ? msgText.split('\n').map(l => l.trim()).filter(Boolean)
+    : [];
+  // Bot welcome
+  config.content.botWelcomeText = document.getElementById('bot-welcome').value.trim();
+}
+
+// ── Git ───────────────────────────────────────────────────────────────
+async function loadGitStatus() {
+  try {
+    const res = await fetch('/api/git-status');
+    const data = await res.json();
+    document.getElementById('git-branch').textContent = '🌿 ' + data.branch;
+    document.getElementById('git-branch-detail').textContent = data.branch;
+    document.getElementById('git-status-detail').textContent = data.status;
+  } catch (_) {}
+}
+
+async function gitPush() {
+  collectFromUI();
+  // First save
+  await saveConfig();
+  const msg = document.getElementById('commit-message').value.trim() || 'admin: update app configuration';
+  try {
+    const res = await fetch('/api/git-push', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: msg })
+    });
+    const data = await res.json();
+    if (data.ok) {
+      showToast('🚀 ' + data.message, 'success');
+      await loadGitStatus();
+    } else {
+      showToast('שגיאת Git: ' + data.error, 'error');
+    }
+  } catch (e) {
+    showToast('שגיאת Git: ' + e.message, 'error');
+  }
+}
+
+// ── Tools tab ─────────────────────────────────────────────────────────
+function renderTools() {
+  if (!config) return;
+  const query = document.getElementById('tool-search').value.toLowerCase();
+  const list = document.getElementById('tools-list');
+
+  const filtered = config.tools.filter(t =>
+    !query || t.titleHe.includes(query) || t.category.includes(query)
+  );
+
+  // Group by category
+  const grouped = {};
+  filtered.forEach(t => {
+    if (!grouped[t.category]) grouped[t.category] = [];
+    grouped[t.category].push(t);
+  });
+
+  let html = '';
+  for (const [cat, tools] of Object.entries(grouped)) {
+    html += `<div class="category-label">${cat}</div>`;
+    tools.forEach(tool => {
+      html += `
+        <div class="tool-row ${tool.visible ? '' : 'hidden-tool'}" id="row-${tool.id}">
+          <span class="tool-emoji">${tool.emoji}</span>
+          <div style="flex:1">
+            <div class="tool-name">${tool.titleHe}</div>
+            <div class="tool-cat">${tool.category}</div>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" ${tool.visible ? 'checked' : ''}
+              onchange="toggleTool('${tool.id}', this.checked)">
+            <span class="slider"></span>
+          </label>
+        </div>`;
+    });
+  }
+  list.innerHTML = html || '<p style="color:var(--text-muted);text-align:center;padding:20px">לא נמצאו תוצאות</p>';
+  updateStats();
+}
+
+function toggleTool(id, visible) {
+  const tool = config.tools.find(t => t.id === id);
+  if (tool) {
+    tool.visible = visible;
+    const row = document.getElementById('row-' + id);
+    if (row) row.classList.toggle('hidden-tool', !visible);
+    updateStats();
+  }
+}
+
+function updateStats() {
+  if (!config) return;
+  const vis = config.tools.filter(t => t.visible).length;
+  const hid = config.tools.filter(t => !t.visible).length;
+  document.getElementById('stat-visible').textContent = vis;
+  document.getElementById('stat-hidden').textContent = hid;
+  document.getElementById('stat-total').textContent = config.tools.length;
+}
+
+// ── Colors tab ────────────────────────────────────────────────────────
+function renderColors() {
+  if (!config) return;
+  const grid = document.getElementById('colors-grid');
+  grid.innerHTML = COLORS.map(c => `
+    <div class="color-swatch ${config.theme.primaryColor === c.hex ? 'selected' : ''}"
+         onclick="selectColor('${c.hex}', '${c.name}')">
+      <div class="swatch-circle" style="background:${c.hex}">
+        ${config.theme.primaryColor === c.hex ? '✓' : ''}
+      </div>
+      <div class="swatch-label">${c.name}</div>
+    </div>
+  `).join('');
+  updateColorPreview();
+}
+
+function selectColor(hex, name) {
+  config.theme.primaryColor = hex;
+  config.theme.primaryColorName = name;
+  renderColors();
+}
+
+function updateColorPreview() {
+  if (!config) return;
+  const hex = config.theme.primaryColor;
+  const name = config.theme.primaryColorName || hex;
+  document.getElementById('preview-circle').style.background = hex;
+  document.getElementById('preview-name').textContent = name;
+  document.getElementById('preview-hex').textContent = hex;
+  document.getElementById('color-preview').style.background = hex + '18';
+}
+
+// ── Content tab ───────────────────────────────────────────────────────
+function renderContent() {
+  if (!config) return;
+  document.getElementById('daily-messages').value =
+    (config.content.dailyMessages || []).join('\n');
+  document.getElementById('bot-welcome').value =
+    config.content.botWelcomeText || '';
+}
+
+// ── Tab switching ─────────────────────────────────────────────────────
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach((t, i) => {
+    const panels = ['tools', 'content', 'design', 'git'];
+    t.classList.toggle('active', panels[i] === name);
+  });
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('panel-' + name).classList.add('active');
+}
+
+// ── Toast ─────────────────────────────────────────────────────────────
+function showToast(msg, type = '') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'show ' + type;
+  setTimeout(() => { t.className = ''; }, 3000);
+}
+</script>
+</body>
+</html>

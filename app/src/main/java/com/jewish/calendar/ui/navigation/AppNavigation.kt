@@ -47,7 +47,6 @@ import com.jewish.calendar.ui.screens.tools.SpiritualTrackingScreen
 import com.jewish.calendar.ui.screens.tools.TikkunHaklaliScreen
 import com.jewish.calendar.ui.screens.tools.TorahScreen
 import com.jewish.calendar.ui.screens.tools.MishnaScreen
-import com.jewish.calendar.ui.screens.admin.AdminScreen
 import com.jewish.calendar.ui.screens.tools.SynagogueMapScreen
 import com.jewish.calendar.ui.screens.tools.ToolsScreen
 import com.jewish.calendar.ui.screens.auth.OnboardingDialog
@@ -76,7 +75,6 @@ private const val ROUTE_SPIRITUAL_TRACKING = "spiritual_tracking"
 private const val ROUTE_TORAH              = "torah"
 private const val ROUTE_MISHNA             = "mishna"
 private const val ROUTE_SYNAGOGUE_MAP      = "synagogue_map"
-private const val ROUTE_ADMIN              = "admin"
 
 // ── Bottom-nav screens ────────────────────────────────────────────────
 
@@ -105,7 +103,7 @@ private val routesWithoutBottomBar = setOf(
     ROUTE_OMER, ROUTE_PSALMS, ROUTE_DAILY_INSPIRATION, ROUTE_GRATITUDE,
     ROUTE_SHALOM_BAYIT, ROUTE_SPECIAL_PRAYERS, ROUTE_BLESSINGS,
     ROUTE_CHALLA, ROUTE_SPIRITUAL_TRACKING, ROUTE_TORAH, ROUTE_MISHNA,
-    ROUTE_SYNAGOGUE_MAP, ROUTE_ADMIN
+    ROUTE_SYNAGOGUE_MAP
 )
 
 // ── Root ──────────────────────────────────────────────────────────────
@@ -239,12 +237,8 @@ private fun MainNavigation(authViewModel: AuthViewModel, isFemale: Boolean) {
             composable(Screen.Profile.route) {
                 ProfileScreen(
                     onSignOut = onSignOut,
-                    onProfileSaved = { authViewModel.refreshUser() },
-                    onNavigateToAdmin = { navController.navigate(ROUTE_ADMIN) }
+                    onProfileSaved = { authViewModel.refreshUser() }
                 )
-            }
-            composable(ROUTE_ADMIN) {
-                AdminScreen(onBack = { navController.popBackStack() })
             }
         }
     }
