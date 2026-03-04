@@ -18,6 +18,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.jewish.calendar.data.BlessingContent
+import com.jewish.calendar.viewmodel.BlessingsViewModel
 import java.util.Calendar
 
 private val BlBg    = Color(0xFFFFFBF0)
@@ -26,46 +29,29 @@ private val BlBlue  = Color(0xFF1565C0)
 private val BlDeep  = Color(0xFF1A2340)
 private val BlMuted = Color(0xFF6B7A9E)
 
-data class BlessingItem(
-    val emoji: String,
-    val name: String,
-    val trigger: String,
-    val blessing: String,
-    val note: String = ""
-)
+// Legacy alias kept so the rest of the screen code compiles unchanged
+private typealias BlessingItem = BlessingContent
 
-private val blessings = listOf(
-    BlessingItem("☕", "בורא פרי הגפן", "על יין וענבים", "בָּרוּךְ אַתָּה ה׳ אֱלֹהֵינוּ מֶלֶךְ הָעוֹלָם בּוֹרֵא פְּרִי הַגָּפֶן"),
-    BlessingItem("🍞", "המוציא לחם", "על לחם ומאפה מחמשת הדגנים", "בָּרוּךְ אַתָּה ה׳ אֱלֹהֵינוּ מֶלֶךְ הָעוֹלָם הַמּוֹצִיא לֶחֶם מִן הָאָרֶץ"),
-    BlessingItem("🍎", "בורא פרי העץ", "על פירות עץ (תפוח, אגס, שזיף...)", "בָּרוּךְ אַתָּה ה׳ אֱלֹהֵינוּ מֶלֶךְ הָעוֹלָם בּוֹרֵא פְּרִי הָעֵץ"),
-    BlessingItem("🍓", "בורא פרי האדמה", "על ירקות ופירות אדמה (תות, תפוח אדמה...)", "בָּרוּךְ אַתָּה ה׳ אֱלֹהֵינוּ מֶלֶךְ הָעוֹלָם בּוֹרֵא פְּרִי הָאֲדָמָה"),
-    BlessingItem("💧", "שהכל נהיה בדברו", "על מים, בשר, ביצה, דגים, ממתקים", "בָּרוּךְ אַתָּה ה׳ אֱלֹהֵינוּ מֶלֶךְ הָעוֹלָם שֶׁהַכֹּל נִהְיֶה בִּדְבָרוֹ"),
-    BlessingItem("🌾", "מזונות", "על מאפה מחמשת הדגנים שאינו לחם", "בָּרוּךְ אַתָּה ה׳ אֱלֹהֵינוּ מֶלֶךְ הָעוֹלָם בּוֹרֵא מִינֵי מְזוֹנוֹת"),
-    BlessingItem("🌈", "ברכת הגשם", "כשרואים קשת בענן", "בָּרוּךְ אַתָּה ה׳ אֱלֹהֵינוּ מֶלֶךְ הָעוֹלָם זוֹכֵר הַבְּרִית וְנֶאֱמָן בִּבְרִיתוֹ וְקַיָּם בְּמַאֲמָרוֹ"),
-    BlessingItem("⚡", "ברכת הברקים", "כשרואים ברק", "בָּרוּךְ אַתָּה ה׳ אֱלֹהֵינוּ מֶלֶךְ הָעוֹלָם עוֹשֶׂה מַעֲשֵׂה בְרֵאשִׁית"),
-    BlessingItem("🌊", "ברכת הים", "כשרואים ים גדול לאחר 30 יום", "בָּרוּךְ אַתָּה ה׳ אֱלֹהֵינוּ מֶלֶךְ הָעוֹלָם שֶׁעָשָׂה אֶת הַיָּם הַגָּדוֹל"),
-    BlessingItem("🌲", "ברכת האילנות", "בניסן, על עצי פרי שנצצו", "בָּרוּךְ אַתָּה ה׳ אֱלֹהֵינוּ מֶלֶךְ הָעוֹלָם שֶׁלֹּא חִסַּר בְּעוֹלָמוֹ כְּלוּם וּבָרָא בוֹ בְּרִיּוֹת טוֹבוֹת וְאִילָנוֹת טוֹבוֹת לֵהָנוֹת בָּהֶם בְּנֵי אָדָם", "ברכה מיוחדת לחודש ניסן"),
-    BlessingItem("🦁", "ברכת החמה", "כל 28 שנה", "בָּרוּךְ אַתָּה ה׳ אֱלֹהֵינוּ מֶלֶךְ הָעוֹלָם עוֹשֶׂה מַעֲשֵׂה בְרֵאשִׁית", "ברכה נדירה — אחת ל-28 שנה"),
-    BlessingItem("🕯️", "בורא מאורי האש", "במוצאי שבת על הנר", "בָּרוּךְ אַתָּה ה׳ אֱלֹהֵינוּ מֶלֶךְ הָעוֹלָם בּוֹרֵא מְאוֹרֵי הָאֵשׁ", "ברכה מיוחדת להבדלה במוצאי שבת"),
-    BlessingItem("🌸", "שהחיינו", "על חדש, מצווה חדשה, שמחה", "בָּרוּךְ אַתָּה ה׳ אֱלֹהֵינוּ מֶלֶךְ הָעוֹלָם שֶׁהֶחֱיָינוּ וְקִיְּמָנוּ וְהִגִּיעָנוּ לַזְּמַן הַזֶּה")
-)
-
-private fun getDailyBlessings(): List<BlessingItem> {
+private fun getDailyBlessings(all: List<BlessingContent>): List<BlessingContent> {
     val hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
     return when {
-        hour < 10 -> blessings.take(6)
-        hour < 14 -> blessings.filter { it.name in listOf("המוציא לחם", "בורא פרי העץ", "בורא פרי האדמה", "שהכל נהיה בדברו", "מזונות") }
-        else -> blessings.drop(6)
+        hour < 10 -> all.take(6)
+        hour < 14 -> all.filter { it.name in listOf("המוציא לחם", "בורא פרי העץ", "בורא פרי האדמה", "שהכל נהיה בדברו", "מזונות") }
+        else -> all.drop(6)
     }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun BlessingsScreen(onBack: () -> Unit) {
-    var selected by remember { mutableStateOf<BlessingItem?>(null) }
+fun BlessingsScreen(
+    onBack: () -> Unit,
+    viewModel: BlessingsViewModel = hiltViewModel()
+) {
+    val allBlessings by viewModel.blessings.collectAsState()
+    var selected by remember { mutableStateOf<BlessingContent?>(null) }
     var showAll by remember { mutableStateOf(false) }
 
-    val displayList = if (showAll) blessings else getDailyBlessings()
+    val displayList = if (showAll) allBlessings else getDailyBlessings(allBlessings)
 
     Scaffold(
         topBar = {

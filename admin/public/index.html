@@ -2,547 +2,776 @@
 <html lang="he" dir="rtl">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width,initial-scale=1">
 <title>⚙️ מערכת ניהול — לוח שנה יהודי</title>
+<!-- Firebase JS SDK (modular v10) -->
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+import {
+  getFirestore, doc, setDoc, onSnapshot, getDoc
+} from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+import {
+  getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut
+} from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
+
+// ── Firebase config — update with your real project values ────────────
+const FIREBASE_CONFIG = {
+  apiKey:            window.FIREBASE_API_KEY     || "REPLACE_WITH_REAL_FIREBASE_API_KEY",
+  authDomain:        window.FIREBASE_AUTH_DOMAIN || "yehuda-calendar.firebaseapp.com",
+  projectId:         window.FIREBASE_PROJECT_ID  || "yehuda-calendar",
+  storageBucket:     "yehuda-calendar.appspot.com",
+  messagingSenderId: "000000000000",
+  appId:             "REPLACE_WITH_APP_ID"
+};
+
+const COL = "app_content";
+
+let app_fb, db, auth;
+try {
+  app_fb = initializeApp(FIREBASE_CONFIG);
+  db     = getFirestore(app_fb);
+  auth   = getAuth(app_fb);
+} catch(e) {
+  console.warn('Firebase init failed, running in local-only mode:', e.message);
+}
+
+// ── Make Firestore helpers available globally ─────────────────────────
+window._fb = { db, auth, doc, setDoc, onSnapshot, getDoc, signInWithEmailAndPassword, signOut, onAuthStateChanged, COL };
+
+// ── Auth state ────────────────────────────────────────────────────────
+if (auth) {
+  onAuthStateChanged(auth, user => {
+    window._fbUser = user;
+    document.getElementById('auth-status').textContent = user
+      ? `✓ מחובר כ-${user.email}`
+      : '⚠ לא מחובר — שינויים יישמרו מקומית בלבד';
+    document.getElementById('auth-status').style.color = user ? '#16a34a' : '#d97706';
+    if (user) window._loadAllContent();
+  });
+}
+</script>
 <style>
-  :root {
-    --primary: #003E7E;
-    --primary-light: #0055aa;
-    --bg: #f4f6fb;
-    --surface: #ffffff;
-    --border: #dde3ee;
-    --text: #1a1a2e;
-    --text-muted: #6b7280;
-    --success: #16a34a;
-    --error: #dc2626;
-    --gold: #c59b00;
-    --radius: 12px;
-    --shadow: 0 2px 12px rgba(0,0,0,0.08);
-  }
-
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-
-  body {
-    font-family: 'Segoe UI', 'Arial Hebrew', Arial, sans-serif;
-    background: var(--bg);
-    color: var(--text);
-    min-height: 100vh;
-    direction: rtl;
-  }
-
-  /* ── Header ── */
-  header {
-    background: linear-gradient(135deg, var(--primary) 0%, #001f5b 100%);
-    color: white;
-    padding: 0 24px;
-    height: 64px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    position: sticky;
-    top: 0;
-    z-index: 100;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-  }
-  header h1 { font-size: 1.3rem; font-weight: 700; }
-  header .git-info { font-size: 0.8rem; opacity: 0.75; display: flex; align-items: center; gap: 8px; }
-  .git-branch { background: rgba(255,255,255,0.15); padding: 3px 10px; border-radius: 20px; }
-
-  /* ── Layout ── */
-  .container { max-width: 1100px; margin: 0 auto; padding: 24px 16px; }
-
-  /* ── Tabs ── */
-  .tabs { display: flex; gap: 4px; background: var(--surface); border-radius: var(--radius); padding: 6px; margin-bottom: 24px; box-shadow: var(--shadow); }
-  .tab { flex: 1; padding: 10px 16px; border: none; background: none; border-radius: 9px; cursor: pointer; font-size: 0.95rem; font-weight: 600; color: var(--text-muted); transition: all 0.2s; font-family: inherit; }
-  .tab:hover { background: var(--bg); }
-  .tab.active { background: var(--primary); color: white; box-shadow: 0 2px 8px rgba(0,62,126,0.3); }
-
-  /* ── Panel ── */
-  .panel { display: none; }
-  .panel.active { display: block; }
-
-  /* ── Cards ── */
-  .card { background: var(--surface); border-radius: var(--radius); padding: 20px; margin-bottom: 16px; box-shadow: var(--shadow); border: 1px solid var(--border); }
-  .card-title { font-size: 1rem; font-weight: 700; color: var(--primary); margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
-
-  /* ── Tool list ── */
-  .category-label {
-    font-size: 0.75rem; font-weight: 800; color: var(--primary);
-    letter-spacing: 1px; text-transform: uppercase;
-    margin: 16px 0 8px; padding: 0 4px;
-    border-bottom: 2px solid var(--primary); padding-bottom: 4px;
-  }
-  .tool-row {
-    display: flex; align-items: center; gap: 12px;
-    padding: 10px 14px; border-radius: 10px; margin-bottom: 6px;
-    border: 1px solid var(--border); background: var(--surface);
-    transition: background 0.15s;
-  }
-  .tool-row:hover { background: var(--bg); }
-  .tool-row.hidden-tool { opacity: 0.45; }
-  .tool-emoji { font-size: 1.4rem; width: 32px; text-align: center; }
-  .tool-name { flex: 1; font-weight: 600; font-size: 0.95rem; }
-  .tool-cat { font-size: 0.78rem; color: var(--text-muted); }
-
-  /* ── Toggle switch ── */
-  .toggle { position: relative; width: 44px; height: 24px; flex-shrink: 0; }
-  .toggle input { opacity: 0; width: 0; height: 0; }
-  .slider {
-    position: absolute; inset: 0; background: #d1d5db;
-    border-radius: 12px; cursor: pointer; transition: background 0.2s;
-  }
-  .slider:before {
-    content: ''; position: absolute; width: 18px; height: 18px;
-    background: white; border-radius: 50%;
-    top: 3px; right: 3px; transition: transform 0.2s;
-    box-shadow: 0 1px 4px rgba(0,0,0,0.2);
-  }
-  input:checked + .slider { background: var(--primary); }
-  input:checked + .slider:before { transform: translateX(-20px); }
-
-  /* ── Colors ── */
-  .colors-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap: 12px; }
-  .color-swatch {
-    display: flex; flex-direction: column; align-items: center; gap: 6px;
-    cursor: pointer; padding: 8px; border-radius: 10px;
-    border: 2px solid transparent; transition: all 0.15s;
-  }
-  .color-swatch:hover { background: var(--bg); }
-  .color-swatch.selected { border-color: var(--primary); background: #e8eeff; }
-  .swatch-circle {
-    width: 48px; height: 48px; border-radius: 50%;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-    display: flex; align-items: center; justify-content: center;
-    font-size: 1.2rem;
-  }
-  .swatch-label { font-size: 0.78rem; font-weight: 600; color: var(--text-muted); text-align: center; }
-  .color-swatch.selected .swatch-label { color: var(--primary); }
-
-  /* ── Inputs ── */
-  textarea, input[type="text"] {
-    width: 100%; border: 1.5px solid var(--border); border-radius: 8px;
-    padding: 10px 12px; font-family: inherit; font-size: 0.95rem;
-    resize: vertical; background: var(--bg); color: var(--text);
-    transition: border-color 0.15s;
-  }
-  textarea:focus, input[type="text"]:focus {
-    outline: none; border-color: var(--primary-light);
-    box-shadow: 0 0 0 3px rgba(0,85,170,0.12);
-  }
-  label { font-size: 0.88rem; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 6px; }
-
-  /* ── Buttons ── */
-  .btn {
-    display: inline-flex; align-items: center; gap: 6px;
-    padding: 10px 20px; border-radius: 8px; border: none;
-    font-family: inherit; font-size: 0.9rem; font-weight: 700;
-    cursor: pointer; transition: all 0.15s;
-  }
-  .btn-primary { background: var(--primary); color: white; }
-  .btn-primary:hover { background: var(--primary-light); box-shadow: 0 2px 8px rgba(0,62,126,0.4); }
-  .btn-success { background: var(--success); color: white; }
-  .btn-success:hover { background: #15803d; }
-  .btn-outline {
-    background: none; border: 2px solid var(--primary);
-    color: var(--primary);
-  }
-  .btn-outline:hover { background: #e8eeff; }
-  .btn-danger { background: var(--error); color: white; }
-  .btn-danger:hover { background: #b91c1c; }
-
-  /* ── Action bar ── */
-  .action-bar {
-    position: sticky; bottom: 0; background: var(--surface);
-    border-top: 1px solid var(--border); padding: 14px 24px;
-    display: flex; gap: 12px; align-items: center; justify-content: flex-start;
-    box-shadow: 0 -2px 12px rgba(0,0,0,0.07); z-index: 50;
-  }
-
-  /* ── Toast ── */
-  #toast {
-    position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%) translateY(20px);
-    background: #1e293b; color: white; padding: 12px 24px;
-    border-radius: 24px; font-size: 0.9rem; font-weight: 600;
-    opacity: 0; transition: all 0.3s; pointer-events: none; z-index: 999;
-    max-width: 90vw; text-align: center;
-  }
-  #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
-  #toast.success { background: var(--success); }
-  #toast.error { background: var(--error); }
-
-  /* ── Stats row ── */
-  .stats-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; margin-bottom: 20px; }
-  .stat-card { background: var(--surface); border-radius: var(--radius); padding: 16px; text-align: center; box-shadow: var(--shadow); border: 1px solid var(--border); }
-  .stat-value { font-size: 2rem; font-weight: 800; color: var(--primary); line-height: 1; }
-  .stat-label { font-size: 0.8rem; color: var(--text-muted); margin-top: 4px; }
-
-  /* ── Search ── */
-  .search-box { position: relative; margin-bottom: 12px; }
-  .search-box input { padding-right: 36px; }
-  .search-icon { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); color: var(--text-muted); pointer-events: none; }
-
-  /* ── Divider ── */
-  hr { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
-
-  /* ── Responsive ── */
-  @media (max-width: 600px) {
-    .tabs { flex-wrap: wrap; }
-    .tab { flex: none; width: calc(50% - 2px); }
-    header h1 { font-size: 1.1rem; }
-  }
+:root{--primary:#003E7E;--primary-light:#0055aa;--bg:#f4f6fb;--surface:#fff;--border:#dde3ee;--text:#1a1a2e;--muted:#6b7280;--success:#16a34a;--error:#dc2626;--r:12px;--sh:0 2px 12px rgba(0,0,0,.08)}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI','Arial Hebrew',Arial,sans-serif;background:var(--bg);color:var(--text);direction:rtl}
+header{background:linear-gradient(135deg,var(--primary) 0%,#001f5b 100%);color:#fff;padding:0 24px;height:64px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;box-shadow:0 2px 8px rgba(0,0,0,.3)}
+header h1{font-size:1.25rem;font-weight:700}
+.auth-bar{font-size:.8rem;display:flex;align-items:center;gap:10px}
+.container{max-width:1140px;margin:0 auto;padding:20px 14px 80px}
+/* Tabs */
+.tabs{display:flex;gap:4px;background:var(--surface);border-radius:var(--r);padding:6px;margin-bottom:20px;box-shadow:var(--sh);flex-wrap:wrap}
+.tab{flex:1;min-width:100px;padding:9px 12px;border:none;background:none;border-radius:9px;cursor:pointer;font-size:.9rem;font-weight:600;color:var(--muted);transition:all .15s;font-family:inherit}
+.tab.active{background:var(--primary);color:#fff;box-shadow:0 2px 8px rgba(0,62,126,.3)}
+/* Panels */
+.panel{display:none}.panel.active{display:block}
+/* Card */
+.card{background:var(--surface);border-radius:var(--r);padding:18px;margin-bottom:14px;box-shadow:var(--sh);border:1px solid var(--border)}
+.card-title{font-size:.95rem;font-weight:700;color:var(--primary);margin-bottom:12px}
+/* Inputs */
+input[type=text],input[type=email],input[type=password],textarea,select{width:100%;border:1.5px solid var(--border);border-radius:8px;padding:9px 12px;font-family:inherit;font-size:.9rem;background:var(--bg);color:var(--text);transition:border-color .15s}
+textarea{resize:vertical}
+input:focus,textarea:focus,select:focus{outline:none;border-color:var(--primary-light);box-shadow:0 0 0 3px rgba(0,85,170,.1)}
+label{font-size:.82rem;font-weight:600;color:var(--muted);display:block;margin-bottom:5px}
+/* Buttons */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:9px 18px;border-radius:8px;border:none;font-family:inherit;font-size:.88rem;font-weight:700;cursor:pointer;transition:all .15s}
+.btn-primary{background:var(--primary);color:#fff}.btn-primary:hover{background:var(--primary-light)}
+.btn-success{background:var(--success);color:#fff}.btn-success:hover{background:#15803d}
+.btn-danger{background:var(--error);color:#fff}.btn-danger:hover{background:#b91c1c}
+.btn-outline{background:none;border:2px solid var(--primary);color:var(--primary)}.btn-outline:hover{background:#e8eeff}
+.btn-sm{padding:5px 12px;font-size:.8rem}
+/* Item rows */
+.item-row{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:8px;cursor:pointer;transition:background .12s;display:flex;align-items:center;gap:10px}
+.item-row:hover{background:#f0f4ff}
+.item-row.editing{border-color:var(--primary);background:#f0f4ff}
+.item-emoji{font-size:1.4rem;width:30px;text-align:center}
+.item-title{font-weight:600;font-size:.9rem;flex:1}
+.item-sub{font-size:.78rem;color:var(--muted);margin-top:2px}
+/* Edit form */
+.edit-form{background:#f8faff;border:1.5px solid var(--primary);border-radius:10px;padding:14px;margin:-4px 0 10px;display:none}
+.edit-form.open{display:block}
+.field-row{margin-bottom:10px}
+.field-row-2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
+/* Toggle */
+.toggle{position:relative;width:44px;height:24px;flex-shrink:0}
+.toggle input{opacity:0;width:0;height:0}
+.slider{position:absolute;inset:0;background:#d1d5db;border-radius:12px;cursor:pointer;transition:background .2s}
+.slider:before{content:'';position:absolute;width:18px;height:18px;background:#fff;border-radius:50%;top:3px;right:3px;transition:transform .2s;box-shadow:0 1px 4px rgba(0,0,0,.2)}
+input:checked+.slider{background:var(--primary)}
+input:checked+.slider:before{transform:translateX(-20px)}
+/* Stats */
+.stats{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px;margin-bottom:16px}
+.stat{background:var(--surface);border-radius:var(--r);padding:14px;text-align:center;box-shadow:var(--sh)}
+.stat-v{font-size:1.8rem;font-weight:800;color:var(--primary)}
+.stat-l{font-size:.75rem;color:var(--muted);margin-top:2px}
+/* Colors */
+.colors{display:grid;grid-template-columns:repeat(auto-fill,minmax(80px,1fr));gap:10px}
+.swatch{display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer;padding:8px;border-radius:10px;border:2px solid transparent;transition:all .12s}
+.swatch:hover{background:var(--bg)}.swatch.sel{border-color:var(--primary);background:#e8eeff}
+.sw-c{width:44px;height:44px;border-radius:50%;box-shadow:0 2px 8px rgba(0,0,0,.15)}
+.sw-l{font-size:.72rem;font-weight:600;color:var(--muted);text-align:center}
+/* Category label */
+.cat-lbl{font-size:.72rem;font-weight:800;color:var(--primary);letter-spacing:.8px;margin:14px 0 6px;border-bottom:2px solid var(--primary);padding-bottom:3px}
+/* Badge */
+.badge{display:inline-block;font-size:.72rem;font-weight:700;padding:2px 8px;border-radius:20px;background:#e0e8ff;color:var(--primary)}
+.badge.live{background:#dcfce7;color:#15803d}
+/* Action bar */
+.action-bar{position:sticky;bottom:0;background:var(--surface);border-top:1px solid var(--border);padding:12px 20px;display:flex;gap:10px;align-items:center;box-shadow:0 -2px 12px rgba(0,0,0,.07);z-index:50}
+/* Toast */
+#toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%) translateY(20px);background:#1e293b;color:#fff;padding:11px 22px;border-radius:22px;font-size:.88rem;font-weight:600;opacity:0;transition:all .3s;pointer-events:none;z-index:999;max-width:90vw;text-align:center}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+#toast.success{background:var(--success)}#toast.error{background:var(--error)}
+hr{border:none;border-top:1px solid var(--border);margin:14px 0}
+.search-box{position:relative;margin-bottom:10px}
+.search-box input{padding-right:32px}
+.si{position:absolute;right:10px;top:50%;transform:translateY(-50%);color:var(--muted);pointer-events:none}
 </style>
 </head>
 <body>
 
 <header>
   <h1>⚙️ מערכת ניהול — לוח שנה יהודי</h1>
-  <div class="git-info">
-    <span id="git-branch" class="git-branch">⏳ טוען...</span>
-    <span id="git-status"></span>
+  <div class="auth-bar">
+    <span id="auth-status" style="color:var(--muted)">⏳ מאמת...</span>
+    <button class="btn btn-sm btn-outline" style="background:rgba(255,255,255,.15);color:#fff;border-color:rgba(255,255,255,.3)" onclick="showAuth()">🔑 כניסה</button>
   </div>
 </header>
 
 <div class="container">
-
   <!-- Tabs -->
-  <div class="tabs">
+  <div class="tabs" id="main-tabs">
     <button class="tab active" onclick="switchTab('tools')">🛠️ כלים</button>
-    <button class="tab" onclick="switchTab('content')">✏️ תוכן</button>
+    <button class="tab" onclick="switchTab('blessings')">✡ ברכות</button>
+    <button class="tab" onclick="switchTab('prayers')">🙏 תפילות</button>
+    <button class="tab" onclick="switchTab('shalom')">💑 שלום בית</button>
+    <button class="tab" onclick="switchTab('challa')">🫓 חלה</button>
+    <button class="tab" onclick="switchTab('tracking')">📊 מעקב רוחני</button>
     <button class="tab" onclick="switchTab('design')">🎨 עיצוב</button>
     <button class="tab" onclick="switchTab('git')">📤 Git</button>
   </div>
 
-  <!-- ── Tab: כלים ──────────────────────────────────────────────── -->
+  <!-- ╔══════════════════════════════════ TOOLS ══╗ -->
   <div id="panel-tools" class="panel active">
-
-    <div class="stats-row">
-      <div class="stat-card">
-        <div class="stat-value" id="stat-visible">—</div>
-        <div class="stat-label">כלים מוצגים</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-value" id="stat-hidden">—</div>
-        <div class="stat-label">כלים מוסתרים</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-value" id="stat-total">—</div>
-        <div class="stat-label">סה"כ כלים</div>
-      </div>
-    </div>
-
+    <div class="stats" id="tools-stats"></div>
     <div class="card">
-      <div class="card-title">🛠️ נראות כלים</div>
-      <div class="search-box">
-        <span class="search-icon">🔍</span>
-        <input type="text" id="tool-search" placeholder="חפש כלי..." oninput="renderTools()">
-      </div>
+      <div class="card-title">🛠️ נראות כלים <span class="badge live" id="tools-live-badge">⬤ Live</span></div>
+      <div class="search-box"><span class="si">🔍</span><input type="text" id="tool-search" placeholder="חפש כלי..." oninput="renderTools()"></div>
       <div id="tools-list"></div>
     </div>
-
   </div>
 
-  <!-- ── Tab: תוכן ──────────────────────────────────────────────── -->
-  <div id="panel-content" class="panel">
-
+  <!-- ╔══════════════════════════════════ BLESSINGS ══╗ -->
+  <div id="panel-blessings" class="panel">
     <div class="card">
-      <div class="card-title">⭐ הודעות חיזוק יומי</div>
-      <label>כל שורה = הודעה נפרדת. ריק = תוכן ברירת מחדל מובנה.</label>
-      <textarea id="daily-messages" rows="12" placeholder="הכנס הודעות חיזוק (שורה לכל הודעה)...&#10;&#10;לדוגמה:&#10;כל יום הוא מתנה חדשה מהשם&#10;צדיק באמונתו יחיה&#10;השם עוזר לכל הקוראים אותו באמת"></textarea>
+      <div class="card-title">✡ ברכות יומיות <span class="badge live">⬤ Live</span></div>
+      <p style="font-size:.85rem;color:var(--muted);margin-bottom:12px">לחץ על ברכה לעריכה. שינויים מתעדכנים באפליקציה מיד.</p>
+      <button class="btn btn-outline btn-sm" style="margin-bottom:10px" onclick="addItem('blessings')">➕ הוסף ברכה</button>
+      <div id="blessings-list"></div>
     </div>
-
-    <div class="card">
-      <div class="card-title">🤖 טקסט פתיחה — שאל את הרב</div>
-      <label>ריק = טקסט ברירת מחדל.</label>
-      <textarea id="bot-welcome" rows="4" placeholder="שלום! אני כאן לענות על שאלות בהלכה ויהדות..."></textarea>
-    </div>
-
   </div>
 
-  <!-- ── Tab: עיצוב ──────────────────────────────────────────────── -->
+  <!-- ╔══════════════════════════════════ PRAYERS ══╗ -->
+  <div id="panel-prayers" class="panel">
+    <div class="card">
+      <div class="card-title">🙏 תפילות מיוחדות <span class="badge live">⬤ Live</span></div>
+      <p style="font-size:.85rem;color:var(--muted);margin-bottom:12px">לחץ על תפילה לעריכה.</p>
+      <button class="btn btn-outline btn-sm" style="margin-bottom:10px" onclick="addItem('prayers')">➕ הוסף תפילה</button>
+      <div id="prayers-list"></div>
+    </div>
+  </div>
+
+  <!-- ╔══════════════════════════════════ SHALOM ══╗ -->
+  <div id="panel-shalom" class="panel">
+    <div class="card">
+      <div class="card-title">💑 טיפים לשלום בית <span class="badge live">⬤ Live</span></div>
+      <button class="btn btn-outline btn-sm" style="margin-bottom:10px" onclick="addItem('shalom_tips')">➕ הוסף טיפ</button>
+      <div id="shalom-list"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">📖 פסוקים לשלום בית <span class="badge live">⬤ Live</span></div>
+      <label>כל שורה = פסוק נפרד:</label>
+      <textarea id="shalom-verses" rows="6" oninput="scheduleSave('shalom_verses')"></textarea>
+    </div>
+  </div>
+
+  <!-- ╔══════════════════════════════════ CHALLA ══╗ -->
+  <div id="panel-challa" class="panel">
+    <div class="card">
+      <div class="card-title">🫓 שלבי הפרשת חלה <span class="badge live">⬤ Live</span></div>
+      <button class="btn btn-outline btn-sm" style="margin-bottom:10px" onclick="addItem('challa_steps')">➕ הוסף שלב</button>
+      <div id="challa-steps-list"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">📋 מתכוני חלה <span class="badge live">⬤ Live</span></div>
+      <button class="btn btn-outline btn-sm" style="margin-bottom:10px" onclick="addItem('challa_recipes')">➕ הוסף מתכון</button>
+      <div id="challa-recipes-list"></div>
+    </div>
+  </div>
+
+  <!-- ╔══════════════════════════════════ TRACKING ══╗ -->
+  <div id="panel-tracking" class="panel">
+    <div class="card">
+      <div class="card-title">📊 פריטי מעקב רוחני <span class="badge live">⬤ Live</span></div>
+      <p style="font-size:.85rem;color:var(--muted);margin-bottom:12px">ניתן לשנות שמות, אמוג'י ויעדים. ניתן גם להוסיף פריטים חדשים.</p>
+      <button class="btn btn-outline btn-sm" style="margin-bottom:10px" onclick="addItem('tracking')">➕ הוסף פריט</button>
+      <div id="tracking-list"></div>
+    </div>
+  </div>
+
+  <!-- ╔══════════════════════════════════ DESIGN ══╗ -->
   <div id="panel-design" class="panel">
-
     <div class="card">
       <div class="card-title">🎨 צבע ראשי</div>
-      <p style="font-size:0.88rem;color:var(--text-muted);margin-bottom:16px;">
-        הצבע הראשי משפיע על כפתורים, כותרות וסמלים באפליקציה.
-      </p>
-      <div class="colors-grid" id="colors-grid"></div>
+      <div class="colors" id="colors-grid"></div>
     </div>
-
     <div class="card">
-      <div class="card-title" style="color:var(--text-muted)">💡 תצוגה מקדימה</div>
-      <div id="color-preview" style="border-radius:10px;padding:16px;display:flex;gap:12px;align-items:center;">
-        <div id="preview-circle" style="width:52px;height:52px;border-radius:50%;flex-shrink:0;"></div>
-        <div>
-          <div id="preview-name" style="font-weight:700;font-size:1rem;"></div>
-          <div id="preview-hex" style="font-size:0.85rem;margin-top:2px;"></div>
-        </div>
-      </div>
+      <div class="card-title">⭐ הודעות חיזוק יומי <span class="badge live">⬤ Live</span></div>
+      <label>כל שורה = הודעה. ריק = תוכן מובנה.</label>
+      <textarea id="daily-msgs" rows="10" oninput="scheduleSave('daily_messages')" placeholder="לדוגמה:&#10;כל יום הוא מתנה חדשה מהשם&#10;צדיק באמונתו יחיה"></textarea>
     </div>
-
+    <div class="card">
+      <div class="card-title">🤖 טקסט פתיחה — שאל רב <span class="badge live">⬤ Live</span></div>
+      <textarea id="bot-welcome" rows="4" oninput="scheduleSave('bot_welcome')" placeholder="שלום! אני כאן לענות על שאלות הלכה..."></textarea>
+    </div>
   </div>
 
-  <!-- ── Tab: Git ──────────────────────────────────────────────── -->
+  <!-- ╔══════════════════════════════════ GIT ══╗ -->
   <div id="panel-git" class="panel">
-
     <div class="card">
       <div class="card-title">📤 שמור ודחוף ל-Git</div>
-      <p style="font-size:0.9rem;color:var(--text-muted);margin-bottom:16px;">
-        לאחר שמירת השינויים, ניתן לדחוף אותם ל-GitHub כדי לעדכן את ענף הפיתוח.
-        לאחר מכן ניתן למשוך ב-Android Studio.
-      </p>
+      <p style="font-size:.88rem;color:var(--muted);margin-bottom:14px">שמירת הגדרות הכלים לקובץ config.json ודחיפה ל-Git. תוכן הכלים (ברכות, תפילות וכו') מתעדכן בזמן אמת דרך Firestore.</p>
       <label>הודעת commit</label>
-      <input type="text" id="commit-message" value="admin: update app configuration" style="margin-bottom:14px;">
-      <div style="display:flex;gap:10px;flex-wrap:wrap;">
-        <button class="btn btn-primary" onclick="saveConfig()">💾 שמור שינויים</button>
+      <input type="text" id="commit-msg" value="admin: update app configuration" style="margin-bottom:12px">
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
         <button class="btn btn-success" onclick="gitPush()">🚀 שמור ודחוף ל-Git</button>
       </div>
     </div>
-
     <div class="card">
       <div class="card-title">📋 סטטוס Git</div>
-      <div style="display:flex;gap:10px;align-items:center;margin-bottom:12px;">
-        <span style="font-size:0.9rem;">ענף נוכחי:</span>
-        <strong id="git-branch-detail" style="color:var(--primary);">—</strong>
-        <button class="btn btn-outline" style="padding:5px 12px;font-size:0.8rem;" onclick="loadGitStatus()">🔄 רענן</button>
+      <div style="display:flex;gap:10px;align-items:center;margin-bottom:10px">
+        <span style="font-size:.88rem">ענף:</span>
+        <strong id="git-branch" style="color:var(--primary)">—</strong>
+        <button class="btn btn-outline btn-sm" onclick="loadGitStatus()">🔄</button>
       </div>
-      <pre id="git-status-detail" style="background:var(--bg);padding:12px;border-radius:8px;font-size:0.85rem;min-height:40px;white-space:pre-wrap;"></pre>
+      <pre id="git-status-pre" style="background:var(--bg);padding:10px;border-radius:8px;font-size:.82rem;white-space:pre-wrap;min-height:36px"></pre>
     </div>
-
+    <div class="card">
+      <div class="card-title">🔥 Firebase Firestore</div>
+      <p style="font-size:.85rem;color:var(--muted);margin-bottom:10px">לאחר כניסה, כל השינויים בברכות, תפילות, שלום בית, חלה ומעקב רוחני מתעדכנים ב-Firestore ומשתקפים מיידית באפליקציה.</p>
+      <button class="btn btn-outline btn-sm" onclick="seedFirestore()">🌱 טען נתונים ל-Firestore מהקבצים המקומיים</button>
+      <p style="font-size:.78rem;color:var(--muted);margin-top:6px">* נדרשת כניסה ראשונה. ניתן להשתמש גם ללא Firestore — שינויים יישמרו בקבצי JSON.</p>
+    </div>
   </div>
-
 </div>
 
 <!-- Action bar -->
 <div class="action-bar">
-  <button class="btn btn-primary" onclick="saveConfig()">💾 שמור שינויים</button>
-  <button class="btn btn-outline" onclick="loadConfig()">↩️ בטל שינויים</button>
-  <span id="save-indicator" style="font-size:0.85rem;color:var(--text-muted);"></span>
+  <button class="btn btn-primary" onclick="saveAll()">💾 שמור כל השינויים</button>
+  <span id="save-ind" style="font-size:.82rem;color:var(--muted)"></span>
+</div>
+
+<!-- Auth modal -->
+<div id="auth-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;display:flex;align-items:center;justify-content:center">
+  <div class="card" style="width:340px;max-width:95vw;display:flex;flex-direction:column;gap:12px">
+    <div class="card-title">🔑 כניסת מנהל</div>
+    <div class="field-row"><label>אימייל</label><input type="email" id="auth-email" placeholder="admin@example.com"></div>
+    <div class="field-row"><label>סיסמה</label><input type="password" id="auth-pass" placeholder="••••••••"></div>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-primary" onclick="doLogin()">כניסה</button>
+      <button class="btn btn-outline" onclick="document.getElementById('auth-modal').style.display='none'">ביטול</button>
+    </div>
+    <p id="auth-err" style="font-size:.82rem;color:var(--error);display:none"></p>
+  </div>
 </div>
 
 <!-- Toast -->
 <div id="toast"></div>
 
 <script>
-// ── State ────────────────────────────────────────────────────────────
-let config = null;
+// ═══════════════════════════════════════════════════════════════════════
+// State
+// ═══════════════════════════════════════════════════════════════════════
+let config   = null;  // local tool-visibility config
+let content  = {};    // { blessings:[], prayers:[], shalom_tips:[], shalom_verses:[], challa_steps:[], challa_recipes:[], tracking:[] }
+let saveTimers = {};  // debounce timers per section
+let unsubs   = [];    // Firestore unsubscribe functions
+let editingRow = {};  // { sectionId: itemIndex }
 
 const COLORS = [
-  { name: 'כחול כהה', hex: '#003E7E' },
-  { name: 'כחול',     hex: '#1565C0' },
-  { name: 'ירוק',     hex: '#2E7D32' },
-  { name: 'סגול',     hex: '#6A1B9A' },
-  { name: 'כהה',      hex: '#37474F' },
-  { name: 'בורדו',    hex: '#880E4F' },
-  { name: 'כתום',     hex: '#E65100' },
-  { name: 'ברונזה',   hex: '#6D4C41' },
-  { name: 'טורקיז',   hex: '#00695C' }
+  {name:'כחול כהה',hex:'#003E7E'},{name:'כחול',hex:'#1565C0'},{name:'ירוק',hex:'#2E7D32'},
+  {name:'סגול',hex:'#6A1B9A'},{name:'כהה',hex:'#37474F'},{name:'בורדו',hex:'#880E4F'},
+  {name:'כתום',hex:'#E65100'},{name:'ברונזה',hex:'#6D4C41'},{name:'טורקיז',hex:'#00695C'}
 ];
 
-// ── Boot ─────────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════
+// Boot
+// ═══════════════════════════════════════════════════════════════════════
 window.addEventListener('DOMContentLoaded', async () => {
   await loadConfig();
   await loadGitStatus();
+  renderColors();
+  // Register global content loader (called when Firebase auth succeeds)
+  window._loadAllContent = loadAllContent;
+  // Also load from local assets as fallback immediately
+  await loadAllContentLocal();
 });
 
-// ── Config CRUD ───────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════
+// Config (tool visibility)
+// ═══════════════════════════════════════════════════════════════════════
 async function loadConfig() {
   try {
-    const res = await fetch('/api/config');
-    config = await res.json();
+    const r = await fetch('/api/config');
+    config = await r.json();
     renderTools();
-    renderColors();
-    renderContent();
-    updateStats();
-    document.getElementById('save-indicator').textContent = '';
-  } catch (e) {
-    showToast('שגיאה בטעינת הקובץ: ' + e.message, 'error');
-  }
+    updateToolStats();
+  } catch(e) { toast('שגיאה בטעינת config', 'error'); }
 }
 
 async function saveConfig() {
   if (!config) return;
-  // Collect current UI state into config
-  collectFromUI();
   try {
-    const res = await fetch('/api/config', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(config, null, 2)
-    });
-    const data = await res.json();
-    if (data.ok) {
-      showToast('✓ השינויים נשמרו בהצלחה', 'success');
-      document.getElementById('save-indicator').textContent = 'נשמר ' + new Date().toLocaleTimeString('he-IL');
-    } else {
-      showToast('שגיאה: ' + data.error, 'error');
-    }
-  } catch (e) {
-    showToast('שגיאת שמירה: ' + e.message, 'error');
+    await fetch('/api/config', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(config,null,2)});
+    setSaveInd('הגדרות נשמרו');
+  } catch(e) { toast('שגיאת שמירה', 'error'); }
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// Content — load from Firestore (live) or local JSON (fallback)
+// ═══════════════════════════════════════════════════════════════════════
+async function loadAllContentLocal() {
+  try {
+    const files = {
+      blessings: await fetchAsset('blessings.json'),
+      prayers:   await fetchAsset('special_prayers.json'),
+      shalom:    await fetchAsset('shalom_bayit.json'),
+      challa:    await fetchAsset('challa.json'),
+      tracking:  await fetchAsset('spiritual_tracking.json')
+    };
+    content.blessings      = files.blessings || [];
+    content.prayers        = files.prayers   || [];
+    content.shalom_tips    = files.shalom?.tips   || [];
+    content.shalom_verses  = files.shalom?.verses || [];
+    content.challa_steps   = files.challa?.steps   || [];
+    content.challa_recipes = files.challa?.recipes || [];
+    content.tracking       = files.tracking  || [];
+    renderAllContent();
+  } catch(e) { console.warn('Local content load failed:', e); }
+}
+
+async function fetchAsset(file) {
+  try {
+    const r = await fetch('/api/assets/' + file);
+    if (!r.ok) return null;
+    return await r.json();
+  } catch(e) { return null; }
+}
+
+async function loadAllContent() {
+  // Subscribe to Firestore real-time updates
+  const {db, doc, onSnapshot, COL} = window._fb;
+  if (!db) { await loadAllContentLocal(); return; }
+
+  const sections = ['blessings','special_prayers','shalom_bayit_tips','challa_steps','challa_recipes','spiritual_tracking','daily_messages','bot_welcome'];
+  unsubs.forEach(u => u());
+  unsubs = [];
+
+  sections.forEach(sec => {
+    const ref = doc(db, COL, sec);
+    const unsub = onSnapshot(ref, snap => {
+      if (!snap.exists()) return;
+      const data = snap.data();
+      applyFirestoreSection(sec, data);
+    }, err => console.warn('Firestore listen error:', sec, err));
+    unsubs.push(unsub);
+  });
+}
+
+function applyFirestoreSection(sec, data) {
+  switch(sec) {
+    case 'blessings':       content.blessings      = data.items || []; break;
+    case 'special_prayers': content.prayers        = data.items || []; break;
+    case 'shalom_bayit_tips': content.shalom_tips  = data.items || []; break;
+    case 'challa_steps':    content.challa_steps   = data.items || []; break;
+    case 'challa_recipes':  content.challa_recipes = data.items || []; break;
+    case 'spiritual_tracking': content.tracking    = data.items || []; break;
+    case 'daily_messages':  document.getElementById('daily-msgs').value = (data.items||[]).join('\n'); break;
+    case 'bot_welcome':     document.getElementById('bot-welcome').value = data.text || ''; break;
+  }
+  renderAllContent();
+}
+
+function renderAllContent() {
+  renderBlessings();
+  renderPrayers();
+  renderShalomTips();
+  renderShalomVerses();
+  renderChallaSteps();
+  renderChallaRecipes();
+  renderTracking();
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// Save to Firestore + local asset
+// ═══════════════════════════════════════════════════════════════════════
+async function saveSection(sectionKey) {
+  const {db, doc, setDoc, COL} = window._fb || {};
+
+  // Map section key → Firestore doc name + payload + local file
+  const map = {
+    blessings:      { fsDoc:'blessings',       payload:{items: content.blessings},     localFile:'blessings.json',        localPayload:() => content.blessings },
+    prayers:        { fsDoc:'special_prayers', payload:{items: content.prayers},        localFile:'special_prayers.json',  localPayload:() => content.prayers },
+    shalom_tips:    { fsDoc:'shalom_bayit_tips', payload:{items: content.shalom_tips},  localFile:'shalom_bayit.json',     localPayload:() => ({tips: content.shalom_tips, verses: content.shalom_verses}) },
+    shalom_verses:  { fsDoc:'shalom_bayit_verses', payload:{verses: content.shalom_verses}, localFile:'shalom_bayit.json', localPayload:() => ({tips: content.shalom_tips, verses: content.shalom_verses}) },
+    challa_steps:   { fsDoc:'challa_steps',    payload:{items: content.challa_steps},   localFile:'challa.json',           localPayload:() => ({steps: content.challa_steps, recipes: content.challa_recipes}) },
+    challa_recipes: { fsDoc:'challa_recipes',  payload:{items: content.challa_recipes}, localFile:'challa.json',           localPayload:() => ({steps: content.challa_steps, recipes: content.challa_recipes}) },
+    tracking:       { fsDoc:'spiritual_tracking', payload:{items: content.tracking},   localFile:'spiritual_tracking.json', localPayload:() => content.tracking },
+    daily_messages: { fsDoc:'daily_messages',  payload:{items: document.getElementById('daily-msgs').value.split('\n').map(s=>s.trim()).filter(Boolean)}, localFile:null },
+    bot_welcome:    { fsDoc:'bot_welcome',     payload:{text: document.getElementById('bot-welcome').value.trim()}, localFile:null }
+  };
+
+  const m = map[sectionKey];
+  if (!m) return;
+
+  // Save to Firestore
+  if (db && window._fbUser) {
+    try {
+      await setDoc(doc(db, COL, m.fsDoc), m.payload, {merge:true});
+      document.getElementById('tools-live-badge') && setSaveInd('✓ נשמר ב-Firestore — האפליקציה מתעדכנת מיד');
+    } catch(e) { console.warn('Firestore save error:', e); }
+  }
+
+  // Also save to local JSON asset (for git)
+  if (m.localFile) {
+    try {
+      await fetch('/api/assets/' + m.localFile, {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify(m.localPayload(), null, 2)
+      });
+    } catch(e) { console.warn('Local save error:', e); }
   }
 }
 
-function collectFromUI() {
-  // Daily messages
-  const msgText = document.getElementById('daily-messages').value.trim();
-  config.content.dailyMessages = msgText
-    ? msgText.split('\n').map(l => l.trim()).filter(Boolean)
-    : [];
-  // Bot welcome
-  config.content.botWelcomeText = document.getElementById('bot-welcome').value.trim();
+function scheduleSave(sectionKey) {
+  clearTimeout(saveTimers[sectionKey]);
+  saveTimers[sectionKey] = setTimeout(() => saveSection(sectionKey), 800);
 }
 
-// ── Git ───────────────────────────────────────────────────────────────
-async function loadGitStatus() {
-  try {
-    const res = await fetch('/api/git-status');
-    const data = await res.json();
-    document.getElementById('git-branch').textContent = '🌿 ' + data.branch;
-    document.getElementById('git-branch-detail').textContent = data.branch;
-    document.getElementById('git-status-detail').textContent = data.status;
-  } catch (_) {}
-}
-
-async function gitPush() {
-  collectFromUI();
-  // First save
-  await saveConfig();
-  const msg = document.getElementById('commit-message').value.trim() || 'admin: update app configuration';
-  try {
-    const res = await fetch('/api/git-push', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message: msg })
-    });
-    const data = await res.json();
-    if (data.ok) {
-      showToast('🚀 ' + data.message, 'success');
-      await loadGitStatus();
-    } else {
-      showToast('שגיאת Git: ' + data.error, 'error');
-    }
-  } catch (e) {
-    showToast('שגיאת Git: ' + e.message, 'error');
+// ═══════════════════════════════════════════════════════════════════════
+// Generic item renderer
+// ═══════════════════════════════════════════════════════════════════════
+function renderItemList(containerId, items, sectionKey, schema) {
+  const el = document.getElementById(containerId);
+  if (!el) return;
+  if (!items || items.length === 0) {
+    el.innerHTML = '<p style="color:var(--muted);padding:10px 0">אין פריטים עדיין.</p>';
+    return;
   }
+  el.innerHTML = items.map((item, i) => {
+    const isOpen = editingRow[sectionKey] === i;
+    const title = item[schema.titleField] || item.name || item.title || item.label || '(ללא שם)';
+    const sub   = item[schema.subField]   || item.trigger || item.subtitle || '';
+    return `
+      <div class="item-row ${isOpen?'editing':''}" onclick="toggleEditRow('${sectionKey}',${i},'${containerId}',this)">
+        <span class="item-emoji">${item.emoji||'•'}</span>
+        <div style="flex:1"><div class="item-title">${esc(title)}</div>${sub?`<div class="item-sub">${esc(sub)}</div>`:''}
+        </div>
+        <button class="btn btn-sm btn-danger" onclick="event.stopPropagation();deleteItem('${sectionKey}',${i})">🗑</button>
+      </div>
+      <div class="edit-form ${isOpen?'open':''}" id="ef-${sectionKey}-${i}">
+        ${schema.fields.map(f => `
+          <div class="field-row">
+            <label>${f.label}</label>
+            ${f.type==='textarea'
+              ? `<textarea rows="${f.rows||3}" onchange="updateField('${sectionKey}',${i},'${f.key}',this.value)" oninput="scheduleSave('${sectionKey}')">${esc(item[f.key]||'')}</textarea>`
+              : `<input type="text" value="${esc(item[f.key]||'')}" onchange="updateField('${sectionKey}',${i},'${f.key}',this.value)" oninput="scheduleSave('${sectionKey}')">`
+            }
+          </div>`).join('')}
+      </div>`;
+  }).join('');
 }
 
-// ── Tools tab ─────────────────────────────────────────────────────────
+function toggleEditRow(sectionKey, i, containerId, rowEl) {
+  if (editingRow[sectionKey] === i) {
+    editingRow[sectionKey] = null;
+  } else {
+    editingRow[sectionKey] = i;
+  }
+  // Get parent list and re-render
+  const sections = {
+    blessings:      () => renderBlessings(),
+    prayers:        () => renderPrayers(),
+    shalom_tips:    () => renderShalomTips(),
+    challa_steps:   () => renderChallaSteps(),
+    challa_recipes: () => renderChallaRecipes(),
+    tracking:       () => renderTracking()
+  };
+  if (sections[sectionKey]) sections[sectionKey]();
+}
+
+function updateField(sectionKey, idx, fieldKey, value) {
+  const arr = contentArr(sectionKey);
+  if (!arr || !arr[idx]) return;
+  arr[idx][fieldKey] = value;
+}
+
+function contentArr(sectionKey) {
+  const map = { blessings:'blessings', prayers:'prayers', shalom_tips:'shalom_tips', challa_steps:'challa_steps', challa_recipes:'challa_recipes', tracking:'tracking' };
+  return content[map[sectionKey]];
+}
+
+function deleteItem(sectionKey, idx) {
+  if (!confirm('למחוק פריט זה?')) return;
+  const arr = contentArr(sectionKey);
+  if (arr) { arr.splice(idx,1); saveSection(sectionKey); renderAllContent(); }
+}
+
+function addItem(sectionKey) {
+  const arr = contentArr(sectionKey);
+  if (!arr) return;
+  const defaults = {
+    blessings:      { id:'new_'+Date.now(), emoji:'🌟', name:'ברכה חדשה', trigger:'', blessing:'', note:'' },
+    prayers:        { id:'new_'+Date.now(), emoji:'🙏', title:'תפילה חדשה', subtitle:'', text:'' },
+    shalom_tips:    { id:'new_'+Date.now(), emoji:'💛', title:'טיפ חדש', content:'' },
+    challa_steps:   { id:'new_'+Date.now(), title:'שלב חדש', description:'', blessing:'', note:'' },
+    challa_recipes: { id:'new_'+Date.now(), emoji:'🍞', name:'מתכון חדש', ingredients:'' },
+    tracking:       { key:'new_'+Date.now(), emoji:'⭐', label:'פריט חדש', goal:30 }
+  };
+  arr.push(defaults[sectionKey] || {});
+  editingRow[sectionKey] = arr.length - 1; // auto-open new row
+  saveSection(sectionKey);
+  renderAllContent();
+}
+
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;') }
+
+// ═══════════════════════════════════════════════════════════════════════
+// Per-section renders
+// ═══════════════════════════════════════════════════════════════════════
+function renderBlessings() {
+  renderItemList('blessings-list', content.blessings, 'blessings', {
+    titleField:'name', subField:'trigger',
+    fields:[
+      {key:'emoji',label:'אמוג׳י',type:'text'},
+      {key:'name',label:'שם הברכה',type:'text'},
+      {key:'trigger',label:'מתי אומרים',type:'text'},
+      {key:'blessing',label:'נוסח הברכה',type:'textarea',rows:3},
+      {key:'note',label:'הערה (רשות)',type:'text'}
+    ]
+  });
+}
+function renderPrayers() {
+  renderItemList('prayers-list', content.prayers, 'prayers', {
+    titleField:'title', subField:'subtitle',
+    fields:[
+      {key:'emoji',label:'אמוג׳י',type:'text'},
+      {key:'title',label:'שם התפילה',type:'text'},
+      {key:'subtitle',label:'תת-כותרת',type:'text'},
+      {key:'text',label:'נוסח התפילה',type:'textarea',rows:6}
+    ]
+  });
+}
+function renderShalomTips() {
+  renderItemList('shalom-list', content.shalom_tips, 'shalom_tips', {
+    titleField:'title', subField:'',
+    fields:[
+      {key:'emoji',label:'אמוג׳י',type:'text'},
+      {key:'title',label:'כותרת הטיפ',type:'text'},
+      {key:'content',label:'תוכן הטיפ',type:'textarea',rows:4}
+    ]
+  });
+}
+function renderShalomVerses() {
+  const el = document.getElementById('shalom-verses');
+  if (el && content.shalom_verses) el.value = content.shalom_verses.join('\n');
+}
+function renderChallaSteps() {
+  renderItemList('challa-steps-list', content.challa_steps, 'challa_steps', {
+    titleField:'title', subField:'',
+    fields:[
+      {key:'title',label:'שם השלב',type:'text'},
+      {key:'description',label:'תיאור',type:'textarea',rows:4},
+      {key:'blessing',label:'ברכה (רשות)',type:'textarea',rows:3},
+      {key:'note',label:'הערה (רשות)',type:'textarea',rows:2}
+    ]
+  });
+}
+function renderChallaRecipes() {
+  renderItemList('challa-recipes-list', content.challa_recipes, 'challa_recipes', {
+    titleField:'name', subField:'',
+    fields:[
+      {key:'emoji',label:'אמוג׳י',type:'text'},
+      {key:'name',label:'שם המתכון',type:'text'},
+      {key:'ingredients',label:'מרכיבים',type:'textarea',rows:3}
+    ]
+  });
+}
+function renderTracking() {
+  renderItemList('tracking-list', content.tracking, 'tracking', {
+    titleField:'label', subField:'',
+    fields:[
+      {key:'emoji',label:'אמוג׳י',type:'text'},
+      {key:'label',label:'שם הפריט',type:'text'},
+      {key:'goal',label:'יעד חודשי (מספר)',type:'text'}
+    ]
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// Tools tab
+// ═══════════════════════════════════════════════════════════════════════
 function renderTools() {
   if (!config) return;
-  const query = document.getElementById('tool-search').value.toLowerCase();
-  const list = document.getElementById('tools-list');
-
-  const filtered = config.tools.filter(t =>
-    !query || t.titleHe.includes(query) || t.category.includes(query)
-  );
-
-  // Group by category
+  const q = document.getElementById('tool-search').value.toLowerCase();
+  const el = document.getElementById('tools-list');
+  const filtered = config.tools.filter(t => !q || t.titleHe.includes(q) || t.category.includes(q));
   const grouped = {};
-  filtered.forEach(t => {
-    if (!grouped[t.category]) grouped[t.category] = [];
-    grouped[t.category].push(t);
-  });
-
+  filtered.forEach(t => { if (!grouped[t.category]) grouped[t.category]=[]; grouped[t.category].push(t); });
   let html = '';
   for (const [cat, tools] of Object.entries(grouped)) {
-    html += `<div class="category-label">${cat}</div>`;
-    tools.forEach(tool => {
-      html += `
-        <div class="tool-row ${tool.visible ? '' : 'hidden-tool'}" id="row-${tool.id}">
-          <span class="tool-emoji">${tool.emoji}</span>
-          <div style="flex:1">
-            <div class="tool-name">${tool.titleHe}</div>
-            <div class="tool-cat">${tool.category}</div>
-          </div>
-          <label class="toggle">
-            <input type="checkbox" ${tool.visible ? 'checked' : ''}
-              onchange="toggleTool('${tool.id}', this.checked)">
-            <span class="slider"></span>
-          </label>
-        </div>`;
+    html += `<div class="cat-lbl">${cat}</div>`;
+    tools.forEach(t => {
+      html += `<div class="item-row" id="tr-${t.id}">
+        <span class="item-emoji">${t.emoji}</span>
+        <div class="item-title" style="flex:1">${t.titleHe}</div>
+        <label class="toggle"><input type="checkbox" ${t.visible?'checked':''} onchange="toggleTool('${t.id}',this.checked)"><span class="slider"></span></label>
+      </div>`;
     });
   }
-  list.innerHTML = html || '<p style="color:var(--text-muted);text-align:center;padding:20px">לא נמצאו תוצאות</p>';
-  updateStats();
+  el.innerHTML = html || '<p style="color:var(--muted);padding:10px">לא נמצאו תוצאות</p>';
+  updateToolStats();
 }
-
-function toggleTool(id, visible) {
-  const tool = config.tools.find(t => t.id === id);
-  if (tool) {
-    tool.visible = visible;
-    const row = document.getElementById('row-' + id);
-    if (row) row.classList.toggle('hidden-tool', !visible);
-    updateStats();
-  }
+function toggleTool(id, vis) {
+  const t = config.tools.find(t => t.id===id);
+  if (t) { t.visible = vis; updateToolStats(); }
 }
-
-function updateStats() {
+function updateToolStats() {
   if (!config) return;
-  const vis = config.tools.filter(t => t.visible).length;
-  const hid = config.tools.filter(t => !t.visible).length;
-  document.getElementById('stat-visible').textContent = vis;
-  document.getElementById('stat-hidden').textContent = hid;
-  document.getElementById('stat-total').textContent = config.tools.length;
+  const v = config.tools.filter(t=>t.visible).length;
+  const h = config.tools.filter(t=>!t.visible).length;
+  document.getElementById('tools-stats').innerHTML = `
+    <div class="stat"><div class="stat-v">${v}</div><div class="stat-l">מוצגים</div></div>
+    <div class="stat"><div class="stat-v">${h}</div><div class="stat-l">מוסתרים</div></div>
+    <div class="stat"><div class="stat-v">${config.tools.length}</div><div class="stat-l">סה"כ</div></div>`;
 }
 
-// ── Colors tab ────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════
+// Colors
+// ═══════════════════════════════════════════════════════════════════════
 function renderColors() {
-  if (!config) return;
-  const grid = document.getElementById('colors-grid');
-  grid.innerHTML = COLORS.map(c => `
-    <div class="color-swatch ${config.theme.primaryColor === c.hex ? 'selected' : ''}"
-         onclick="selectColor('${c.hex}', '${c.name}')">
-      <div class="swatch-circle" style="background:${c.hex}">
-        ${config.theme.primaryColor === c.hex ? '✓' : ''}
-      </div>
-      <div class="swatch-label">${c.name}</div>
-    </div>
-  `).join('');
-  updateColorPreview();
+  const el = document.getElementById('colors-grid');
+  if (!config || !el) return;
+  el.innerHTML = COLORS.map(c => `
+    <div class="swatch ${config.theme?.primaryColor===c.hex?'sel':''}" onclick="selectColor('${c.hex}','${c.name}')">
+      <div class="sw-c" style="background:${c.hex}"></div>
+      <div class="sw-l">${c.name}</div>
+    </div>`).join('');
 }
-
 function selectColor(hex, name) {
+  if (!config.theme) config.theme={};
   config.theme.primaryColor = hex;
   config.theme.primaryColorName = name;
   renderColors();
 }
 
-function updateColorPreview() {
-  if (!config) return;
-  const hex = config.theme.primaryColor;
-  const name = config.theme.primaryColorName || hex;
-  document.getElementById('preview-circle').style.background = hex;
-  document.getElementById('preview-name').textContent = name;
-  document.getElementById('preview-hex').textContent = hex;
-  document.getElementById('color-preview').style.background = hex + '18';
+// ═══════════════════════════════════════════════════════════════════════
+// Save all
+// ═══════════════════════════════════════════════════════════════════════
+async function saveAll() {
+  await saveConfig();
+  // Save shalom verses from textarea
+  content.shalom_verses = document.getElementById('shalom-verses').value.split('\n').map(s=>s.trim()).filter(Boolean);
+  const sections = ['blessings','prayers','shalom_tips','shalom_verses','challa_steps','challa_recipes','tracking','daily_messages','bot_welcome'];
+  for (const s of sections) await saveSection(s);
+  toast('✓ כל השינויים נשמרו', 'success');
+  setSaveInd('נשמר ' + new Date().toLocaleTimeString('he-IL'));
 }
 
-// ── Content tab ───────────────────────────────────────────────────────
-function renderContent() {
-  if (!config) return;
-  document.getElementById('daily-messages').value =
-    (config.content.dailyMessages || []).join('\n');
-  document.getElementById('bot-welcome').value =
-    config.content.botWelcomeText || '';
+// ═══════════════════════════════════════════════════════════════════════
+// Git
+// ═══════════════════════════════════════════════════════════════════════
+async function loadGitStatus() {
+  try {
+    const r = await fetch('/api/git-status');
+    const d = await r.json();
+    document.getElementById('git-branch').textContent = d.branch;
+    document.getElementById('git-status-pre').textContent = d.status;
+  } catch(_) {}
+}
+async function gitPush() {
+  await saveAll();
+  const msg = document.getElementById('commit-msg').value || 'admin: update app configuration';
+  try {
+    const r = await fetch('/api/git-push', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({message:msg})});
+    const d = await r.json();
+    if (d.ok) { toast('🚀 ' + d.message, 'success'); await loadGitStatus(); }
+    else toast('שגיאת Git: ' + d.error, 'error');
+  } catch(e) { toast('שגיאת Git: ' + e.message, 'error'); }
 }
 
-// ── Tab switching ─────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════
+// Seed Firestore from local JSON
+// ═══════════════════════════════════════════════════════════════════════
+async function seedFirestore() {
+  const {db, doc, setDoc, COL} = window._fb || {};
+  if (!db || !window._fbUser) { toast('נדרשת כניסה תחילה', 'error'); return; }
+
+  const seeds = [
+    { fsDoc:'blessings',          payload:{items: content.blessings} },
+    { fsDoc:'special_prayers',    payload:{items: content.prayers} },
+    { fsDoc:'shalom_bayit_tips',  payload:{items: content.shalom_tips} },
+    { fsDoc:'shalom_bayit_verses',payload:{verses: content.shalom_verses} },
+    { fsDoc:'challa_steps',       payload:{items: content.challa_steps} },
+    { fsDoc:'challa_recipes',     payload:{items: content.challa_recipes} },
+    { fsDoc:'spiritual_tracking', payload:{items: content.tracking} },
+    { fsDoc:'daily_messages',     payload:{items: []} },
+    { fsDoc:'bot_welcome',        payload:{text: ''} }
+  ];
+
+  let ok=0;
+  for (const s of seeds) {
+    try { await setDoc(doc(db,COL,s.fsDoc), s.payload); ok++; } catch(e) { console.warn(s.fsDoc, e); }
+  }
+  toast(`✓ ${ok}/${seeds.length} מסמכים הועלו ל-Firestore`, 'success');
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// Auth
+// ═══════════════════════════════════════════════════════════════════════
+function showAuth() { document.getElementById('auth-modal').style.display='flex'; }
+async function doLogin() {
+  const {auth, signInWithEmailAndPassword} = window._fb || {};
+  if (!auth) { toast('Firebase לא מוגדר', 'error'); return; }
+  const email = document.getElementById('auth-email').value;
+  const pass  = document.getElementById('auth-pass').value;
+  try {
+    await signInWithEmailAndPassword(auth, email, pass);
+    document.getElementById('auth-modal').style.display='none';
+    toast('✓ התחברת בהצלחה', 'success');
+  } catch(e) {
+    const errEl = document.getElementById('auth-err');
+    errEl.textContent = e.message; errEl.style.display='block';
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// Tabs
+// ═══════════════════════════════════════════════════════════════════════
+const TABS = ['tools','blessings','prayers','shalom','challa','tracking','design','git'];
 function switchTab(name) {
-  document.querySelectorAll('.tab').forEach((t, i) => {
-    const panels = ['tools', 'content', 'design', 'git'];
-    t.classList.toggle('active', panels[i] === name);
-  });
-  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
-  document.getElementById('panel-' + name).classList.add('active');
+  document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('active', TABS[i]===name));
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.getElementById('panel-'+name).classList.add('active');
 }
 
-// ── Toast ─────────────────────────────────────────────────────────────
-function showToast(msg, type = '') {
-  const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.className = 'show ' + type;
-  setTimeout(() => { t.className = ''; }, 3000);
+// ═══════════════════════════════════════════════════════════════════════
+// Helpers
+// ═══════════════════════════════════════════════════════════════════════
+function toast(msg, type='') {
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.className='show '+(type||'');
+  setTimeout(()=>{t.className=''},3200);
 }
+function setSaveInd(msg) { document.getElementById('save-ind').textContent=msg; }
 </script>
 </body>
 </html>

@@ -20,6 +20,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.jewish.calendar.data.ChallaRecipeContent
+import com.jewish.calendar.data.ChallaStepContent
+import com.jewish.calendar.viewmodel.ChallaViewModel
 
 private val ChBg    = Color(0xFFFFF8E1)
 private val ChBrown = Color(0xFF6D4C41)
@@ -28,45 +32,14 @@ private val ChWarm  = Color(0xFFFF8F00)
 private val ChMuted = Color(0xFF8D6E63)
 private val ChGreen = Color(0xFF2E7D32)
 
-data class ChallaStep(val title: String, val description: String, val blessing: String? = null)
-
-private val steps = listOf(
-    ChallaStep(
-        title = "הכנה ולשם יחוד",
-        description = "לפני הלישה מומלץ לומר:\n\n\"לְשֵׁם יִחוּד קֻדְשָׁא בְּרִיךְ הוּא וּשְׁכִינְתֵּיהּ, הֲרֵינִי מְכַוֶּנֶת לְקַיֵּם מִצְוַת הַפְרָשַׁת חַלָּה\"\n\nשיעורי קמח לחישוב:\n• פחות מ-1.666 ק\"ג קמח — אין חובה להפריש\n• 1.666 – 2.25 ק\"ג — מפרישים ללא ברכה\n• יותר מ-2.25 ק\"ג — מפרישים עם ברכה\n\nאם יש ספק — הפרישי בלא ברכה",
-        blessing = null
-    ),
-    ChallaStep(
-        title = "הברכה המלאה",
-        description = "לאחר גמר הלישה ולפני הפרישה, יש לאחד את כל חלקי הבצק יחד.\n\nאמרי את הברכה:",
-        blessing = "בָּרוּךְ אַתָּה יְהֹוָה אֱלֹהֵינוּ מֶלֶךְ הָעוֹלָם,\nאֲשֶׁר קִדְּשָׁנוּ בְּמִצְוֹתָיו וְצִוָּנוּ לְהַפְרִישׁ חַלָּה."
-    ),
-    ChallaStep(
-        title = "הפרשה והכרזה",
-        description = "קחי חתיכה כגודל זית (כ-28 גרם) מהבצק.\n\nהגבהי אותה ואמרי בקול:",
-        blessing = "הֲרֵי זוֹ חַלָּה!"
-    ),
-    ChallaStep(
-        title = "תפילה אחרי ההפרשה",
-        description = "לאחר ההפרשה מומלץ להתפלל (אין חובה, אך מנהג יפה):",
-        blessing = "יְהִי רָצוֹן מִלְּפָנֶיךָ, יְהֹוָה אֱלֹהֵינוּ וֵאלֹהֵי אֲבוֹתֵינוּ, שֶׁתִּשְׁרֶה בְּרָכָה בְּמַעֲשֵׂי יָדֵינוּ. וּכְשֵׁם שֶׁאֲנִי מְקַיֶּמֶת מִצְוַת הַפְרָשַׁת חַלָּה, כֵּן תִּזְכֶּה כָּל יִשְׂרָאֵל לְבֵית הַמִּקְדָּשׁ הַשְּׁלִישִׁי בִּמְהֵרָה בְּיָמֵינוּ, אָמֵן."
-    ),
-    ChallaStep(
-        title = "שריפת החלה",
-        description = "• בזמן הבית: ניתנה לכהן\n• בזמן הזה: מכסים בנייר כסף ושורפים בתנור (בנפרד מהבישול)\n• אם לא ניתן: עוטפים היטב בשקית ומניחים בפח — לא יאכל אדם ובהמה",
-        blessing = null
-    )
-)
-
-private val recipes = listOf(
-    Triple("🍞", "חלה שבת קלאסית", "1 ק\"ג קמח, 2 ביצים, 1/2 כוס שמן, 1/2 כוס סוכר, 1 כפית מלח, 25 גר' שמרים, 300 מ\"ל מים חמימים"),
-    Triple("🌾", "חלה מחיטה מלאה", "500 גר' קמח לבן, 500 גר' קמח מלא, 3 ביצים, 1/4 כוס דבש, 1/3 כוס שמן, 1 כפית מלח, 25 גר' שמרים"),
-    Triple("✨", "חלה ספוגית עם שמרים מהירים", "1 ק\"ג קמח, 2 ביצים, 1/2 כוס שמן, 3/4 כוס סוכר, 11 גר' שמרים יבשים, 1/2 כפית מלח, 350 מ\"ל מים חמים")
-)
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ChallaScreen(onBack: () -> Unit) {
+fun ChallaScreen(
+    onBack: () -> Unit,
+    viewModel: ChallaViewModel = hiltViewModel()
+) {
+    val steps by viewModel.steps.collectAsState()
+    val recipes by viewModel.recipes.collectAsState()
     var completedSteps by remember { mutableStateOf(setOf<Int>()) }
     var showRecipes by remember { mutableStateOf(false) }
 
@@ -238,7 +211,8 @@ fun ChallaScreen(onBack: () -> Unit) {
             } else {
                 // Recipes
                 Text("מתכוני חלה", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = ChBrown)
-                recipes.forEach { (emoji, name, ingredients) ->
+                recipes.forEach { recipe ->
+                    val emoji = recipe.emoji; val name = recipe.name; val ingredients = recipe.ingredients
                     ElevatedCard(
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(14.dp),

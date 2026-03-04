@@ -1,0 +1,26 @@
+[
+  {
+    "key": "prayer",
+    "emoji": "🙏",
+    "label": "תפילה",
+    "goal": 30
+  },
+  {
+    "key": "torah",
+    "emoji": "📖",
+    "label": "לימוד תורה",
+    "goal": 20
+  },
+  {
+    "key": "chesed",
+    "emoji": "❤️",
+    "label": "גמילות חסדים",
+    "goal": 10
+  },
+  {
+    "key": "tehilim",
+    "emoji": "📜",
+    "label": "תהילים",
+    "goal": 15
+  }
+]

@@ -76,6 +76,11 @@ object AppModule {
 
     @Provides
     @Singleton
+    fun provideContentRepository(@ApplicationContext context: Context): com.jewish.calendar.data.ContentRepository =
+        com.jewish.calendar.data.ContentRepository(context)
+
+    @Provides
+    @Singleton
     fun provideAuthRepository(): com.jewish.calendar.data.AuthRepository = com.jewish.calendar.data.AuthRepository()
 
     @Provides

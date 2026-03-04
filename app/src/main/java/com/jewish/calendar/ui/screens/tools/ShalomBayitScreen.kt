@@ -18,6 +18,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.jewish.calendar.data.ShalomTipContent
+import com.jewish.calendar.viewmodel.ShalomBayitViewModel
 
 private val SBBg    = Color(0xFFFFF0F5)
 private val SBRose  = Color(0xFFE91E63)
@@ -25,30 +28,17 @@ private val SBGold  = Color(0xFFD4AF37)
 private val SBDeep  = Color(0xFF3E0020)
 private val SBMuted = Color(0xFF9E7B8A)
 
-data class ShalomTip(val emoji: String, val title: String, val content: String)
-
-private val tips = listOf(
-    ShalomTip("💬", "תקשורת פתוחה", "שוחח/י עם בן/בת זוגך בכנות ובאהבה. הקשב/י באמת לדבריו/ה מבלי להפריע. תקשורת טובה היא הבסיס לכל מערכת יחסים."),
-    ShalomTip("🌹", "הכרת תודה יומית", "אמור/י לבן/בת זוגך לפחות דבר אחד שאת/ה מכיר/ה תודה עליו כל יום. הכרת טובה מחזקת את הקשר ומביאה שמחה."),
-    ShalomTip("🕯️", "שבת קודש יחד", "קדשו את השבת יחד — הדלקת נרות, קידוש, סעודה משפחתית. השבת היא מתנה שמחזקת את הבית היהודי."),
-    ShalomTip("🤝", "כבוד הדדי", "\"כבדהו וחשדהו\" — כבד/י את בן/בת זוגך כפי שהיית רוצה שיכבדו אותך. כבוד הוא מפתח לאהבה אמיתית."),
-    ShalomTip("⭐", "זמן איכות", "הקדישו זמן לעצמכם בלי מסכים ועיסוקים. טיול, שיחה, ארוחה בשניים — אלה הרגעים שמחזקים את הקשר."),
-    ShalomTip("🙏", "תפילה משותפת", "התפללו יחד מדי פעם. אפילו קריאת שמע קצרה לפני השינה עושה פלאים לאווירה בבית."),
-    ShalomTip("💝", "מחווה של אהבה", "עשה/י מחווה קטנה שמשמחת את בן/בת זוגך — הכן/י קפה, השאר/י פתק חמה, קנה/י פרח. המעשים הקטנים הם שמצטברים."),
-    ShalomTip("🌟", "סליחה ומחילה", "אל תחזיק/י טינה. הסליחה היא מתנה שנותנים קודם כל לעצמנו. בית שיש בו מחילה הוא בית שיש בו שלום.")
-)
-
-private val verses = listOf(
-    "\"מָצָא אִשָּׁה מָצָא טוֹב\" — משלי יח, כב",
-    "\"בַּיִת וָהוֹן נַחֲלַת אָבוֹת\" — משלי יט, יד",
-    "\"שָׁלוֹם שָׁלוֹם לָרָחוֹק וְלַקָּרוֹב\" — ישעיה נז, יט",
-    "\"אִשֶּׁת חַיִל מִי יִמְצָא וְרָחֹק מִפְּנִינִים מִכְרָהּ\" — משלי לא, י"
-)
+private typealias ShalomTip = ShalomTipContent
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ShalomBayitScreen(onBack: () -> Unit) {
-    var selectedTip by remember { mutableStateOf<ShalomTip?>(null) }
+fun ShalomBayitScreen(
+    onBack: () -> Unit,
+    viewModel: ShalomBayitViewModel = hiltViewModel()
+) {
+    val tips by viewModel.tips.collectAsState()
+    val verses by viewModel.verses.collectAsState()
+    var selectedTip by remember { mutableStateOf<ShalomTipContent?>(null) }
 
     Scaffold(
         topBar = {

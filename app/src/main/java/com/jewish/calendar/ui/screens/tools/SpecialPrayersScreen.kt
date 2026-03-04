@@ -19,6 +19,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.jewish.calendar.data.SpecialPrayerContent
+import com.jewish.calendar.viewmodel.SpecialPrayersViewModel
 
 private val SpBg    = Color(0xFFF0F4FF)
 private val SpBlue  = Color(0xFF1A237E)
@@ -26,13 +29,9 @@ private val SpGold  = Color(0xFFD4AF37)
 private val SpInk   = Color(0xFF0D1B4E)
 private val SpMuted = Color(0xFF5C6BC0)
 
-data class SpecialPrayer(
-    val emoji: String,
-    val title: String,
-    val subtitle: String,
-    val text: String
-)
+private typealias SpecialPrayer = SpecialPrayerContent
 
+@Suppress("unused")
 private val prayers = listOf(
     SpecialPrayer(
         "💊",
@@ -86,8 +85,12 @@ private val prayers = listOf(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SpecialPrayersScreen(onBack: () -> Unit) {
-    var selected by remember { mutableStateOf<SpecialPrayer?>(null) }
+fun SpecialPrayersScreen(
+    onBack: () -> Unit,
+    viewModel: SpecialPrayersViewModel = hiltViewModel()
+) {
+    val prayers by viewModel.prayers.collectAsState()
+    var selected by remember { mutableStateOf<SpecialPrayerContent?>(null) }
     var fontSize by remember { mutableIntStateOf(20) }
 
     Scaffold(

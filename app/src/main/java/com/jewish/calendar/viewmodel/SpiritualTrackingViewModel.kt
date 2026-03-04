@@ -2,6 +2,7 @@ package com.jewish.calendar.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.jewish.calendar.data.ContentRepository
 import com.jewish.calendar.data.UserPreferencesRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -88,59 +89,47 @@ data class SpiritualTrackingUiState(
 
 @HiltViewModel
 class SpiritualTrackingViewModel @Inject constructor(
-    private val repo: SpiritualTrackingRepository
+    private val repo: SpiritualTrackingRepository,
+    private val contentRepo: ContentRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SpiritualTrackingUiState())
     val uiState: StateFlow<SpiritualTrackingUiState> = _uiState.asStateFlow()
 
-    private val goals = mapOf(
-        "prayer"  to 30,
-        "torah"   to 20,
-        "chesed"  to 10,
-        "tehilim" to 15
-    )
-
-    private val labels = mapOf(
-        "prayer"  to "תפילה",
-        "torah"   to "לימוד תורה",
-        "chesed"  to "גמילות חסדים",
-        "tehilim" to "תהילים"
-    )
-
-    private val emojis = mapOf(
-        "prayer"  to "🙏",
-        "torah"   to "📖",
-        "chesed"  to "❤️",
-        "tehilim" to "📜"
-    )
-
-    init { load() }
-
-    private fun load() {
+    init {
+        // Re-build items whenever content or counts change
         viewModelScope.launch {
-            val prayer  = repo.getPrayerDays()
-            val torah   = repo.getTorahDays()
-            val chesed  = repo.getChesedDays()
-            val tehilim = repo.getTehilimDays()
-
-            val items = listOf("prayer", "torah", "chesed", "tehilim").map { key ->
-                val count = when (key) {
-                    "prayer"  -> prayer
-                    "torah"   -> torah
-                    "chesed"  -> chesed
-                    else      -> tehilim
-                }
-                TrackingItem(
-                    key   = key,
-                    label = labels[key]!!,
-                    emoji = emojis[key]!!,
-                    count = count,
-                    goal  = goals[key]!!
-                )
+            contentRepo.trackingItemsFlow().collect { definitions ->
+                load(definitions)
             }
-            _uiState.update { it.copy(items = items, isLoading = false) }
         }
+    }
+
+    private suspend fun load(
+        definitions: List<com.jewish.calendar.data.TrackingItemContent> =
+            listOf(
+                com.jewish.calendar.data.TrackingItemContent("prayer",  "🙏", "תפילה",           30),
+                com.jewish.calendar.data.TrackingItemContent("torah",   "📖", "לימוד תורה",      20),
+                com.jewish.calendar.data.TrackingItemContent("chesed",  "❤️", "גמילות חסדים",   10),
+                com.jewish.calendar.data.TrackingItemContent("tehilim", "📜", "תהילים",          15)
+            )
+    ) {
+        val prayer  = repo.getPrayerDays()
+        val torah   = repo.getTorahDays()
+        val chesed  = repo.getChesedDays()
+        val tehilim = repo.getTehilimDays()
+        val counts  = mapOf("prayer" to prayer, "torah" to torah, "chesed" to chesed, "tehilim" to tehilim)
+
+        val items = definitions.map { def ->
+            TrackingItem(
+                key   = def.key,
+                label = def.label,
+                emoji = def.emoji,
+                count = counts[def.key] ?: 0,
+                goal  = def.goal
+            )
+        }
+        _uiState.update { it.copy(items = items, isLoading = false) }
     }
 
     fun increment(key: String) {
