@@ -2,6 +2,7 @@ package com.jewish.calendar.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.jewish.calendar.data.AdminRepository
 import com.jewish.calendar.data.AuthRepository
 import com.jewish.calendar.data.CalendarEvent
 import com.jewish.calendar.data.CalendarEventDao
@@ -29,7 +30,8 @@ class ProfileViewModel @Inject constructor(
     private val authRepository: AuthRepository,
     private val calendarRepository: HebrewCalendarRepository,
     private val eventDao: CalendarEventDao,
-    private val prefs: UserPreferencesRepository
+    private val prefs: UserPreferencesRepository,
+    private val adminRepository: AdminRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ProfileUiState(isLoading = true))
@@ -79,6 +81,9 @@ class ProfileViewModel @Inject constructor(
     }
 
     fun dismissError() = _uiState.update { it.copy(error = null, saveSuccess = false) }
+
+    /** Returns true if [pin] matches the stored admin PIN. */
+    suspend fun checkAdminPin(pin: String): Boolean = adminRepository.checkPin(pin)
 
     private suspend fun addBirthdayToCalendar(user: UserModel, birthDateStr: String) {
         try {
